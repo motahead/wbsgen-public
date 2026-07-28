@@ -1,0 +1,164 @@
+{
+  "_wbsgen": {
+    "generatorVersion": "development"
+  },
+  "project": {
+    "name": "個人開発プロジェクト",
+    "startDate": "2026-08-03",
+    "endDate": "2026-09-01",
+    "statusDate": "2026-08-18",
+    "issueBaseUrl": "https://github.com/your_account/your_repo/issues/"
+  },
+  "display": {
+    "standard": {
+      "columns": {
+        "visible": ["*"],
+        "width": {"name": 220, "assignee": 70, "comment": 180}
+      }
+    },
+    "layers": {"visible": ["*"]}
+  },
+  "milestones": [
+    {"date": "2026-08-24", "name": "実装完了"},
+    {"date": "2026-08-28", "name": "リリース"}
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "name": "要件定義",
+      "comment": "親タスク。日付・進捗は子タスクから自動集計"
+    },
+    {
+      "id": "1.1",
+      "name": "ヒアリング",
+      "assignee": "担当者A",
+      "plannedStart": "2026-08-03",
+      "plannedDuration": 2,
+      "actualStart": "2026-08-03",
+      "actualEnd": "2026-08-04",
+      "progress": 100,
+      "issue": 101,
+      "comment": "関係者への要件ヒアリング"
+    },
+    {
+      "id": "1.2",
+      "name": "要件整理",
+      "assignee": "担当者A",
+      "plannedStart": "2026-08-05",
+      "plannedDuration": 2,
+      "actualStart": "2026-08-05",
+      "actualEnd": "2026-08-06",
+      "progress": 100,
+      "issue": 102,
+      "comment": "ヒアリング内容をドキュメント化"
+    },
+    {
+      "id": "2",
+      "name": "設計",
+      "comment": "画面・DB設計フェーズ"
+    },
+    {
+      "id": "2.1",
+      "name": "画面設計",
+      "assignee": "担当者B",
+      "plannedStart": "2026-08-07",
+      "plannedDuration": 3,
+      "actualStart": "2026-08-07",
+      "actualEnd": "2026-08-11",
+      "progress": 100,
+      "issue": 110,
+      "comment": "ワイヤーフレーム作成"
+    },
+    {
+      "id": "2.2",
+      "name": "DB設計",
+      "assignee": "担当者B",
+      "plannedStart": "2026-08-10",
+      "plannedDuration": 2,
+      "actualStart": "2026-08-10",
+      "actualEnd": "2026-08-11",
+      "progress": 100,
+      "issue": 111,
+      "comment": "テーブル定義とER図"
+    },
+    {
+      "id": "2.3",
+      "name": "設計レビュー",
+      "assignee": "担当者A",
+      "plannedStart": "2026-08-12",
+      "plannedDuration": 2,
+      "actualStart": "2026-08-12",
+      "actualEnd": "2026-08-13",
+      "progress": 100,
+      "issue": 112,
+      "comment": "指摘事項を反映済み"
+    },
+    {
+      "id": "3",
+      "name": "実装",
+      "comment": "アプリケーション実装フェーズ"
+    },
+    {
+      "id": "3.1",
+      "name": "基盤実装",
+      "assignee": "担当者C",
+      "plannedStart": "2026-08-13",
+      "plannedDuration": 5,
+      "actualStart": "2026-08-13",
+      "progress": 60,
+      "issue": 120,
+      "comment": "認証・共通処理を実装中"
+    },
+    {
+      "id": "3.2",
+      "name": "画面実装",
+      "assignee": "担当者B",
+      "plannedStart": "2026-08-17",
+      "plannedDuration": 4,
+      "actualStart": "2026-08-17",
+      "progress": 20,
+      "issue": 121,
+      "comment": "一覧・詳細画面を実装中"
+    },
+    {
+      "id": "3.3",
+      "name": "API実装",
+      "assignee": "担当者C",
+      "plannedStart": "2026-08-20",
+      "plannedDuration": 3,
+      "progress": 0,
+      "issue": 122,
+      "comment": "着手前"
+    },
+    {
+      "id": "4",
+      "name": "テスト",
+      "comment": "結合テストフェーズ"
+    },
+    {
+      "id": "4.1",
+      "name": "結合テスト",
+      "assignee": "担当者A",
+      "plannedStart": "2026-08-25",
+      "plannedDuration": 2,
+      "progress": 0,
+      "issue": 130,
+      "comment": "着手前"
+    },
+    {
+      "id": "5",
+      "name": "リリース準備",
+      "comment": "公開前の確認作業"
+    },
+    {
+      "id": "5.1",
+      "name": "リリース作業",
+      "assignee": "担当者C",
+      "plannedStart": "2026-08-27",
+      "plannedDuration": 2,
+      "progress": 0,
+      "issue": 140,
+      "comment": "着手前"
+    }
+  ]
+}
