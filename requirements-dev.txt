@@ -1,0 +1,5 @@
+-r requirements.txt
+coverage>=7.0,<8.0
+playwright>=1.0,<2.0
+pytest>=9,<10
+PyYAML>=6.0,<7.0

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>$project_name - $app_name</title>
+  <style>
+$style
+  </style>
+</head>
+<body>
+$warning_toggle_input$holiday_toggle_input  <div class="app"$app_style>
+    <header class="topbar">
+      <div class="topbar-identity">
+      $view_menu
+      <div class="summary">
+        <span>$project_name</span>
+        <span>表示範囲 <strong>$display_range</strong></span>
+        <span>基準日 <strong>$status_date</strong></span>
+      </div>
+      </div>
+      <div class="topbar-actions">
+      <button class="search-summary" type="button" data-search-summary aria-expanded="false" aria-controls="search-drawer">検索 0件</button>
+      $warning_toggle
+      $holiday_toggle
+      <div class="legend" aria-label="凡例">
+        <span class="legend-group"><span class="legend-label">子</span><span class="legend-item"><span class="swatch plan"></span>計画</span><span class="legend-item"><span class="swatch progress"></span>進捗</span></span>
+        <span class="legend-group"><span class="legend-label">親</span><span class="legend-item"><span class="swatch parent-plan"></span>計画</span><span class="legend-item"><span class="swatch parent-progress"></span>進捗</span></span>
+        <span class="legend-item layer-legend" data-layer="actual"><span class="swatch actual"></span>実績</span>
+        <span class="legend-item layer-legend" data-layer="inazuma"><span class="swatch inazuma"></span>イナズマ線</span>
+      </div>
+      </div>
+    </header>
+    <section class="search-drawer" id="search-drawer" data-search-drawer aria-label="検索・フィルタ条件" hidden>
+      <div class="search-condition">
+        <span class="search-condition-label">条件</span>
+        <input class="search-input" type="search" data-search-keyword placeholder="キーワードを入力" aria-label="検索キーワード">
+      </div>
+      <div class="search-controls">
+        <div class="search-options" aria-label="検索対象">
+          <label><input type="checkbox" data-search-field="all" checked>すべて</label>
+          <label><input type="checkbox" data-search-field="name" checked>タスク名</label>
+          <label><input type="checkbox" data-search-field="comment" checked>コメント</label>
+          <label><input type="checkbox" data-search-field="assignee" checked>担当者</label>
+          <label><input type="checkbox" data-search-field="issue" checked>Issue番号</label>
+        </div>
+        <button class="control-button" type="button" data-search-clear>条件をクリア</button>
+        <div class="search-mode" role="radiogroup" aria-label="表示モード">
+          <span class="search-mode-label">表示</span>
+          <label><input type="radio" name="search-mode" data-search-mode="filter" checked>フィルタ</label>
+          <label><input type="radio" name="search-mode" data-search-mode="highlight">ハイライト</label>
+        </div>
+      </div>
+      <div class="search-actions">
+        <button class="search-close" type="button" data-search-close aria-label="検索・フィルタを閉じる" title="閉じる">×</button>
+      </div>
+    </section>
+    <main class="workspace">
+$table$gantt    </main>
+$warnings$holidays    <script type="application/json" id="wbsgen-source">
+$source_json
+    </script>
+    <script type="application/json" id="wbsgen-display-settings">
+$display_settings_json
+    </script>
+    <script>
+$width_model_script
+    </script>
+    <script>
+$app_script
+    </script>
+  </div>
+</body>
+</html>

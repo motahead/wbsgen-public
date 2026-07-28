@@ -1,0 +1,7 @@
+[run]
+branch = True
+source = wbsgen
+
+[report]
+fail_under = 80
+show_missing = True

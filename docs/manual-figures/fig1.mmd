@@ -1,0 +1,12 @@
+flowchart LR
+  json["project.json\n(JSONを編集)"] -->|generate| html["project.html\n(HTMLを更新)"]
+  html -->|refresh / 更新コマンド| html
+  html -->|export json| exported_json["project.json\n(エクスポート)"]
+  html -->|export xlsx| xlsx["project.xlsx"]
+
+  classDef source fill:#4f936e,color:#fff,stroke:#4f936e;
+  classDef html fill:#2f3a4a,color:#fff,stroke:#2f3a4a;
+  classDef output fill:#eef2f6,color:#202735,stroke:#6689ad;
+  class json source;
+  class html html;
+  class exported_json,xlsx output;

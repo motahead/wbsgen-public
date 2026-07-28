@@ -1,0 +1,26 @@
+{
+  "_wbsgen": {"generatorVersion": "development"},
+  "project": {
+    "name": "リリース計画",
+    "startDate": "2026-07-13",
+    "endDate": "2026-07-24",
+    "statusDate": "2026-07-17"
+  },
+  "display": {
+    "standard": {"columns": {"visible": ["*"]}},
+    "layers": {"visible": ["*"]}
+  },
+  "holidays": [{"date": "2026-07-20", "name": "会社休日"}],
+  "milestones": [{"date": "2026-07-24", "name": "リリース"}],
+  "tasks": [
+    {"id": "1", "name": "準備"},
+    {"id": "1.1", "name": "要件確認", "plannedStart": "2026-07-13", "plannedDuration": 2, "progress": 100, "actualStart": "2026-07-13", "actualEnd": "2026-07-14"},
+    {"id": "1.2", "name": "設計", "plannedStart": "2026-07-15", "plannedDuration": 2, "progress": 80, "actualStart": "2026-07-15"},
+    {"id": "2", "name": "実装"},
+    {"id": "2.1", "name": "API実装", "plannedStart": "2026-07-15", "plannedDuration": 3, "progress": 25, "actualStart": "2026-07-15"},
+    {"id": "2.2", "name": "画面実装", "plannedStart": "2026-07-16", "plannedDuration": 3, "progress": 50, "actualStart": "2026-07-16"},
+    {"id": "2.3", "name": "結合テスト", "plannedStart": "2026-07-21", "plannedDuration": 2, "progress": 0},
+    {"id": "3", "name": "リリース"},
+    {"id": "3.1", "name": "リリース判定", "plannedStart": "2026-07-24", "plannedDuration": 1, "progress": 0}
+  ]
+}

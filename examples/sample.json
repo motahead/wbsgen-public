@@ -1,0 +1,78 @@
+{
+  "_wbsgen": {
+    "generatorVersion": "development"
+  },
+  "project": {
+    "name": "個人開発プロジェクト",
+    "startDate": "2026-06-01",
+    "endDate": "2026-06-30",
+    "statusDate": "2026-06-17",
+    "issueBaseUrl": "https://github.com/your_account/your_repo/issues/"
+  },
+  "display": {
+    "standard": {
+      "columns": {
+        "visible": ["*"],
+        "width": {"name": 260, "assignee": 70, "comment": 200}
+      }
+    },
+    "layers": {"visible": ["*"]}
+  },
+  "tasks": [
+    {
+      "id": "1",
+      "name": "認証改善",
+      "comment": "親タスク。日付・進捗は子タスクから自動集計"
+    },
+    {
+      "id": "1.1",
+      "name": "Cognito調査",
+      "assignee": "担当者A",
+      "plannedStart": "2026-06-01",
+      "plannedDuration": 5,
+      "actualStart": "2026-06-01",
+      "actualEnd": "2026-06-05",
+      "progress": 100,
+      "issue": 101,
+      "comment": "認証方式と影響範囲を整理"
+    },
+    {
+      "id": "1.2",
+      "name": "Lambda修正",
+      "assignee": "担当者A",
+      "plannedStart": "2026-06-08",
+      "plannedDuration": 8,
+      "actualStart": "2026-06-09",
+      "actualEnd": null,
+      "progress": 50,
+      "issue": 102,
+      "comment": "実装中"
+    },
+    {
+      "id": "2",
+      "name": "リリース準備",
+      "comment": "公開前の確認作業"
+    },
+    {
+      "id": "2.1",
+      "name": "README整備",
+      "assignee": "担当者B",
+      "plannedStart": "2026-06-12",
+      "plannedDuration": 3,
+      "actualStart": "2026-06-12",
+      "actualEnd": "2026-06-16",
+      "progress": 100,
+      "issue": 201,
+      "comment": "利用手順を整備"
+    },
+    {
+      "id": "2.2",
+      "name": "動作確認",
+      "plannedStart": "2026-06-17",
+      "plannedDuration": 2,
+      "progress": 0,
+      "issue": 202,
+      "comment": "これから着手"
+    }
+  ]
+}

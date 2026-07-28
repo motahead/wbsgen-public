@@ -1,0 +1,445 @@
+{
+  "_wbsgen": {
+    "generatorVersion": "development"
+  },
+  "project": {
+    "name": "WBS-GEN 視覚確認サンプル",
+    "startDate": "2026-05-31",
+    "endDate": "2026-08-03",
+    "statusDate": "2026-06-10",
+    "issueBaseUrl": "https://github.com/your_account/your_repo/issues/"
+  },
+  "display": {
+    "standard": {
+      "columns": {
+        "visible": ["*"],
+        "width": {"name": 220, "assignee": 56, "comment": 220}
+      }
+    },
+    "layers": {"visible": ["*"]}
+  },
+  "holidays": [
+    {
+      "date": "2026-06-08",
+      "name": "会社休日"
+    },
+    {
+      "date": "2026-07-20",
+      "name": "海の日"
+    },
+    {
+      "date": "2026-08-10"
+    }
+  ],
+  "milestones": [
+    {
+      "date": "2026-06-12",
+      "name": "要件確定"
+    },
+    {
+      "date": "2026-06-24",
+      "name": "設計凍結"
+    },
+    {
+      "date": "2026-06-26",
+      "name": "中間レビュー"
+    },
+    {
+      "date": "2026-06-29",
+      "name": "QA開始"
+    },
+    {
+      "date": "2026-07-22",
+      "name": "リリース判定"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "1",
+      "name": "主要ケース",
+      "assignee": "担当者A",
+      "plannedStart": "2026-06-01",
+      "plannedDuration": 5,
+      "progress": 20,
+      "comment": "親タスクへの直接入力は警告になり、子孫から集計される"
+    },
+    {
+      "id": "1.1",
+      "name": "0%ケース",
+      "assignee": "担当者B",
+      "plannedStart": "2026-06-01",
+      "plannedDuration": 5,
+      "progress": 0,
+      "issue": 611,
+      "comment": "実績なし。計画線のみを確認する"
+    },
+    {
+      "id": "1.2",
+      "name": "中間親タスク",
+      "assignee": "担当者C",
+      "plannedStart": "2026-06-02",
+      "plannedDuration": 3,
+      "progress": 30,
+      "comment": "親でもあり子でもあるタスク。入力値は集計時に無視される"
+    },
+    {
+      "id": "1.2.1",
+      "name": "土日を挟む80%",
+      "plannedStart": "2026-06-01",
+      "plannedDuration": 12,
+      "actualStart": "2026-06-03",
+      "actualEnd": null,
+      "progress": 80,
+      "issue": 612,
+      "comment": "progress到達点で土日を進捗対象日から除外する。非遅延側の表示を確認する"
+    },
+    {
+      "id": "1.2.2",
+      "name": "完了100%",
+      "assignee": "担当者D",
+      "plannedStart": "2026-06-01",
+      "plannedDuration": 5,
+      "actualStart": "2026-06-01",
+      "actualEnd": "2026-06-05",
+      "progress": 100,
+      "issue": 613,
+      "comment": "進捗塗りは計画末尾まで。イナズマ接続点は基準日位置"
+    },
+    {
+      "id": "1.3",
+      "name": "実績開始がprogress到達点より後ろ",
+      "assignee": "担当者A, 担当者B",
+      "plannedStart": "2026-06-01",
+      "plannedDuration": 8,
+      "actualStart": "2026-06-10",
+      "actualEnd": null,
+      "progress": 30,
+      "issue": 614,
+      "comment": "progressは計画に対する位置で、実績開始日に補正しない"
+    },
+    {
+      "id": "1.4",
+      "name": "長いタスク名とコメントの表示確認",
+      "assignee": "担当者A, 担当者B, 担当者D, 担当者C",
+      "plannedStart": "2026-06-04",
+      "plannedDuration": 7,
+      "progress": 75,
+      "issue": 615,
+      "comment": "長めのコメントがWBS表のセル幅や行高に与える影響と、非遅延側の表示を確認するためのタスク"
+    },
+    {
+      "id": "2",
+      "name": "別ルートケース",
+      "assignee": "担当者A",
+      "comment": "複数ルートタスクの順序、区切り、集計独立性を確認する"
+    },
+    {
+      "id": "2.1",
+      "name": "基準日より進み",
+      "assignee": "担当者B",
+      "plannedStart": "2026-06-01",
+      "plannedDuration": 12,
+      "actualStart": "2026-06-01",
+      "actualEnd": null,
+      "progress": 90,
+      "issue": 621,
+      "comment": "進捗到達点が基準日より右に出るケース"
+    },
+    {
+      "id": "2.2",
+      "name": "基準日より遅れ",
+      "assignee": "担当者C",
+      "plannedStart": "2026-06-01",
+      "plannedDuration": 12,
+      "actualStart": "2026-06-04",
+      "actualEnd": null,
+      "progress": 20,
+      "issue": 622,
+      "comment": "進捗到達点が基準日より左に出るケース"
+    },
+    {
+      "id": "2.3",
+      "name": "計画のみの短期タスク",
+      "plannedStart": "2026-06-11",
+      "plannedDuration": 2,
+      "progress": 0,
+      "comment": "Issue未指定、実績なし、コメントありの表示を確認する"
+    },
+    {
+      "id": "3.1",
+      "name": "土日開始警告",
+      "assignee": "担当者D",
+      "plannedStart": "2026-06-06",
+      "plannedDuration": 3,
+      "progress": 50,
+      "issue": 631,
+      "comment": "親3はJSONに定義せず、自動補完される"
+    },
+    {
+      "id": "3.2",
+      "name": "未計画だが実績あり",
+      "assignee": "担当者A, 担当者B",
+      "actualStart": "2026-06-03",
+      "actualEnd": null,
+      "progress": 40,
+      "issue": 632,
+      "comment": "計画線、進捗塗り、イナズマ対象外。実績線のみ表示する"
+    },
+    {
+      "id": "4",
+      "name": "スクロール確認",
+      "assignee": "担当者A",
+      "comment": "縦スクロール量と将来の祝日確認用。子タスクの一部は2026-07-20を跨ぐ"
+    },
+    {
+      "id": "4.1",
+      "name": "スクロール行01",
+      "assignee": "担当者B",
+      "plannedStart": "2026-06-15",
+      "plannedDuration": 5,
+      "actualStart": "2026-06-15",
+      "actualEnd": "2026-06-19",
+      "progress": 100,
+      "issue": 641,
+      "comment": "追加行の完了ケース"
+    },
+    {
+      "id": "4.2",
+      "name": "スクロール行02",
+      "assignee": "担当者C",
+      "plannedStart": "2026-06-22",
+      "plannedDuration": 6,
+      "actualStart": "2026-06-23",
+      "actualEnd": null,
+      "progress": 60,
+      "issue": 642,
+      "comment": "追加行の進行中ケース"
+    },
+    {
+      "id": "4.3",
+      "name": "7/20跨ぎ短期",
+      "plannedStart": "2026-07-17",
+      "plannedDuration": 4,
+      "actualStart": "2026-07-17",
+      "actualEnd": null,
+      "progress": 50,
+      "issue": 643,
+      "comment": "2026-07-20を跨ぐ。現時点では祝日扱いしない"
+    },
+    {
+      "id": "4.4",
+      "name": "7/20開始",
+      "assignee": "担当者D",
+      "plannedStart": "2026-07-20",
+      "plannedDuration": 3,
+      "progress": 0,
+      "issue": 644,
+      "comment": "2026-07-20開始。休日開始警告の確認用"
+    },
+    {
+      "id": "4.5",
+      "name": "7/20跨ぎ長期",
+      "assignee": "担当者A, 担当者B",
+      "plannedStart": "2026-07-16",
+      "plannedDuration": 8,
+      "actualStart": "2026-07-20",
+      "actualEnd": null,
+      "progress": 40,
+      "issue": 645,
+      "comment": "2026-07-20を含む長めの計画"
+    },
+    {
+      "id": "4.6",
+      "name": "7月下旬完了",
+      "assignee": "担当者A",
+      "plannedStart": "2026-07-21",
+      "plannedDuration": 5,
+      "actualStart": "2026-07-21",
+      "actualEnd": "2026-07-27",
+      "progress": 100,
+      "issue": 646,
+      "comment": "7月下旬の完了ケース"
+    },
+    {
+      "id": "4.7",
+      "name": "8月境界前",
+      "assignee": "担当者B",
+      "plannedStart": "2026-07-27",
+      "plannedDuration": 5,
+      "actualStart": "2026-07-28",
+      "actualEnd": null,
+      "progress": 70,
+      "issue": 647,
+      "comment": "8月境界手前まで伸びるケース"
+    },
+    {
+      "id": "4.8",
+      "name": "8月境界跨ぎ",
+      "assignee": "担当者C",
+      "plannedStart": "2026-07-30",
+      "plannedDuration": 3,
+      "progress": 25,
+      "issue": 648,
+      "comment": "表示範囲末尾付近の横スクロール確認用"
+    },
+    {
+      "id": "4.9",
+      "name": "実績なし中盤",
+      "plannedStart": "2026-06-29",
+      "plannedDuration": 7,
+      "progress": 35,
+      "issue": 649,
+      "comment": "実績なしの追加行"
+    },
+    {
+      "id": "4.10",
+      "name": "実績開始のみ",
+      "assignee": "担当者D",
+      "plannedStart": "2026-07-06",
+      "plannedDuration": 7,
+      "actualStart": "2026-07-07",
+      "actualEnd": null,
+      "progress": 55,
+      "issue": 650,
+      "comment": "実績線と縦スクロールの重なり確認"
+    },
+    {
+      "id": "4.11",
+      "name": "月内終盤",
+      "assignee": "担当者A, 担当者B",
+      "plannedStart": "2026-07-24",
+      "plannedDuration": 6,
+      "progress": 80,
+      "issue": 651,
+      "comment": "7月終盤の進捗表示確認"
+    },
+    {
+      "id": "4.12",
+      "name": "表示範囲末尾",
+      "assignee": "担当者A",
+      "plannedStart": "2026-08-03",
+      "plannedDuration": 1,
+      "progress": 0,
+      "issue": 652,
+      "comment": "表示範囲末尾の1日タスク"
+    },
+    {
+      "id": "4.13",
+      "name": "スクロール余白01",
+      "assignee": "担当者B",
+      "plannedStart": "2026-06-16",
+      "plannedDuration": 4,
+      "progress": 20,
+      "issue": 653,
+      "comment": "縦スクロール確認用の追加行"
+    },
+    {
+      "id": "4.14",
+      "name": "スクロール余白02",
+      "assignee": "担当者C",
+      "plannedStart": "2026-06-23",
+      "plannedDuration": 4,
+      "actualStart": "2026-06-24",
+      "actualEnd": null,
+      "progress": 45,
+      "issue": 654,
+      "comment": "縦スクロール確認用の実績あり追加行"
+    },
+    {
+      "id": "4.15",
+      "name": "スクロール余白03",
+      "plannedStart": "2026-07-01",
+      "plannedDuration": 5,
+      "progress": 65,
+      "issue": 655,
+      "comment": "縦スクロール確認用の7月追加行"
+    },
+    {
+      "id": "4.16",
+      "name": "スクロール余白04",
+      "assignee": "担当者D",
+      "plannedStart": "2026-07-08",
+      "plannedDuration": 5,
+      "actualStart": "2026-07-08",
+      "actualEnd": null,
+      "progress": 30,
+      "issue": 656,
+      "comment": "縦スクロール確認用の実績線追加行"
+    },
+    {
+      "id": "4.17",
+      "name": "スクロール余白05",
+      "assignee": "担当者A, 担当者B",
+      "plannedStart": "2026-07-15",
+      "plannedDuration": 5,
+      "progress": 85,
+      "issue": 657,
+      "comment": "縦スクロール確認用の高進捗追加行"
+    },
+    {
+      "id": "4.18",
+      "name": "スクロール余白06",
+      "assignee": "担当者A",
+      "plannedStart": "2026-07-22",
+      "plannedDuration": 5,
+      "progress": 10,
+      "issue": 658,
+      "comment": "縦スクロール確認用の末尾追加行"
+    },
+    {
+      "id": "5",
+      "name": "表示範囲外クリップ",
+      "assignee": "担当者B",
+      "comment": "左・右・左右・完全範囲外のクリップ印を確認"
+    },
+    {
+      "id": "5.1",
+      "name": "左クリップ",
+      "assignee": "担当者C",
+      "plannedStart": "2026-05-27",
+      "plannedDuration": 8,
+      "progress": 60,
+      "issue": 661,
+      "comment": "表示範囲前から始まり範囲内で終わる"
+    },
+    {
+      "id": "5.2",
+      "name": "右クリップ",
+      "plannedStart": "2026-07-30",
+      "plannedDuration": 5,
+      "progress": 20,
+      "issue": 662,
+      "comment": "表示範囲内で始まり範囲後へ続く"
+    },
+    {
+      "id": "5.3",
+      "name": "左右クリップ",
+      "assignee": "担当者D",
+      "plannedStart": "2026-05-20",
+      "plannedDuration": 63,
+      "progress": 45,
+      "issue": 663,
+      "comment": "表示範囲前から始まり範囲後へ続く"
+    },
+    {
+      "id": "5.4",
+      "name": "完全に範囲前",
+      "assignee": "担当者A, 担当者B",
+      "plannedStart": "2026-05-18",
+      "plannedDuration": 5,
+      "progress": 0,
+      "issue": 664,
+      "comment": "バー本体なしで左端のグレー印のみ"
+    },
+    {
+      "id": "5.5",
+      "name": "完全に範囲後",
+      "assignee": "担当者A",
+      "plannedStart": "2026-08-10",
+      "plannedDuration": 5,
+      "progress": 0,
+      "issue": 665,
+      "comment": "バー本体なしで右端のグレー印のみ"
+    }
+  ]
+}

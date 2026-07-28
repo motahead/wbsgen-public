@@ -1,0 +1,56 @@
+[tools]
+python = "3.12"
+node = "22"
+"npm:@mermaid-js/mermaid-cli" = "11.12.0"
+
+[tasks.setup-dev]
+description = "Create a local virtual environment and install development dependencies."
+run = "mise exec python@3.12 -- python -m venv .venv && .venv/bin/python -m pip install -r requirements-dev.txt"
+
+[tasks.verify-code]
+description = "Run source tests with coverage via pytest."
+run = "sh -c 'py=${WBSGEN_PYTHON:-.venv/bin/python}; \"$py\" -m coverage run -m pytest tests && \"$py\" -m coverage report'"
+
+[tasks.build-zipapp]
+description = "Build the distributable zipapp."
+run = "python3 tools/build_zipapp.py"
+
+[tasks.verify-distribution]
+description = "Verify the deterministic public CLI contract against the zipapp."
+run = "sh -c 'zipapp=${WBSGEN_ZIPAPP:-}; if [ -z \"$zipapp\" ]; then python3 tools/build_zipapp.py; zipapp=dist/wbsgen.pyz; fi; py=${WBSGEN_PYTHON:-.venv/bin/python}; \"$py\" tools/verify_distribution.py --zipapp \"$zipapp\" --work-dir output/distribution'"
+
+[tasks.qa-explore]
+description = "Run a seed-recorded exploratory QA workflow against the zipapp."
+run = "mise run build-zipapp && sh -c 'py=${WBSGEN_PYTHON:-.venv/bin/python}; \"$py\" tools/qa_explore.py --zipapp dist/wbsgen.pyz --work-dir output/qa \"$@\"' --"
+
+[tasks.verify-live-gov-holidays]
+description = "Optionally fetch and validate the live Cabinet Office holiday CSV. Never runs in CI."
+run = "sh -c 'py=${WBSGEN_PYTHON:-.venv/bin/python}; \"$py\" tools/verify_live_gov_holidays.py'"
+
+[tasks.visual-install]
+description = "Install Playwright Chromium into the project-local cache."
+run = "PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright sh -c 'py=${WBSGEN_PYTHON:-.venv/bin/python}; \"$py\" -m playwright install chromium'"
+
+[tasks.verify-visual]
+description = "Generate the visual fixture and check structural parity with the design reference."
+run = "mise run build-zipapp && sh -c 'py=${WBSGEN_PYTHON:-.venv/bin/python}; \"$py\" tools/verify_visual.py --zipapp dist/wbsgen.pyz --work-dir output/visual --reference-html mockups/visual-reference.html'"
+
+[tasks.capture-visual]
+description = "Capture screenshots for an explicit human visual review."
+run = "mkdir -p output/captures && mise run build-zipapp && python3 dist/wbsgen.pyz generate examples/visual-test.json -o output/captures/visual-test.html --overwrite && PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright sh -c 'py=${WBSGEN_PYTHON:-.venv/bin/python}; \"$py\" tools/visual_screenshot.py --generated-html output/captures/visual-test.html --output-dir output/captures --viewport 1360x900'"
+
+[tasks.manual-figures]
+description = "Generate self-contained MANUAL.html figures."
+run = "PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright sh -c 'if [ -x .venv/bin/python ]; then .venv/bin/python tools/render_manual_figures.py --write; else python3 tools/render_manual_figures.py --write; fi'"
+
+[tasks.manual-figures-check]
+description = "Verify checked-in manual figure outputs are current."
+run = "PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright sh -c 'if [ -x .venv/bin/python ]; then .venv/bin/python tools/render_manual_figures.py --check; else python3 tools/render_manual_figures.py --check; fi'"
+
+[tasks.verify-manual]
+description = "Verify manual content and generated figures."
+run = "mise run manual-figures-check"
+
+[tasks.verify-pr]
+description = "Run all blocking quality profiles before a pull request."
+run = "mise run verify-code && mise run verify-distribution && mise run verify-visual && mise run verify-manual"

@@ -1,0 +1,74 @@
+{
+  "_wbsgen": {
+    "generatorVersion": "development"
+  },
+  "project": {
+    "name": "配布ワークフロー検証",
+    "startDate": "2026-08-03",
+    "endDate": "2026-08-28",
+    "statusDate": "2026-08-14",
+    "issueBaseUrl": "https://github.com/your_account/your_repo/issues/"
+  },
+  "display": {
+    "standard": {
+      "columns": {
+        "visible": ["*"],
+        "width": {"name": 260, "assignee": 90, "comment": 220}
+      }
+    },
+    "layers": {"visible": ["*"]}
+  },
+  "tasks": [
+    {"id": "1", "name": "設計", "comment": "親タスク"},
+    {
+      "id": "1.1",
+      "name": "要件確認",
+      "assignee": "担当者A",
+      "plannedStart": "2026-08-03",
+      "plannedDuration": 4,
+      "actualStart": "2026-08-03",
+      "actualEnd": "2026-08-06",
+      "progress": 100,
+      "issue": 169,
+      "comment": "Issue とコメントを含む"
+    },
+    {
+      "id": "1.2",
+      "name": "設計レビュー",
+      "assignee": "担当者B",
+      "plannedStart": "2026-08-07",
+      "plannedDuration": 3,
+      "actualStart": "2026-08-07",
+      "actualEnd": null,
+      "progress": 50,
+      "issue": 170,
+      "comment": "レビュー中"
+    },
+    {"id": "2", "name": "実装", "comment": "親タスク"},
+    {
+      "id": "2.1",
+      "name": "実装",
+      "assignee": "担当者A",
+      "plannedStart": "2026-08-11",
+      "plannedDuration": 5,
+      "progress": 0,
+      "issue": 171,
+      "comment": "着手前"
+    },
+    {
+      "id": "2.2",
+      "name": "検証",
+      "assignee": "担当者C",
+      "plannedStart": "2026-08-17",
+      "plannedDuration": 4,
+      "progress": 0,
+      "comment": "休日をまたぐ"
+    }
+  ],
+  "holidays": [
+    {"date": "2026-08-14", "name": "夏季休暇"}
+  ],
+  "milestones": [
+    {"date": "2026-08-10", "name": "設計完了"}
+  ]
+}
