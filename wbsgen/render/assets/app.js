@@ -98,15 +98,41 @@
     return row.dataset[`search${field[0].toUpperCase()}${field.slice(1)}`] || '';
   }
 
-  function taskMatchesSearch(row) {
-    const keyword = searchState.keyword.trim();
-    if (!keyword) {
-      return false;
-    }
+  function parseSearchTerms(keyword) {
+    const includes = [];
+    const excludes = [];
+    String(keyword || '').trim().split(/\s+/).filter(Boolean).forEach((term) => {
+      if (term.startsWith('-')) {
+        const excluded = term.slice(1);
+        if (excluded) {
+          excludes.push(excluded);
+        }
+      } else {
+        includes.push(term);
+      }
+    });
+    return {includes, excludes};
+  }
+
+  function hasSearchTerms() {
+    const terms = parseSearchTerms(searchState.keyword);
+    return Boolean(terms.includes.length || terms.excludes.length);
+  }
+
+  function rowMatchesSearchTerm(row, term) {
     return Array.from(searchState.fields).some((field) =>
       normalizeSearchText(searchValueForRow(row, field), field)
-        .includes(normalizeSearchText(keyword, field))
+        .includes(normalizeSearchText(term, field))
     );
+  }
+
+  function taskMatchesSearch(row) {
+    if (!hasSearchTerms()) {
+      return false;
+    }
+    const terms = parseSearchTerms(searchState.keyword);
+    return terms.includes.every((term) => rowMatchesSearchTerm(row, term))
+      && terms.excludes.every((term) => !rowMatchesSearchTerm(row, term));
   }
 
   function addTaskAndAncestors(taskId, target) {
@@ -143,7 +169,7 @@
   }
 
   function renderSearchHighlights() {
-    const active = Boolean(searchState.keyword.trim()) && searchState.mode === 'highlight';
+    const active = hasSearchTerms() && searchState.mode === 'highlight';
     leftRows.forEach((row) => row.classList.toggle('is-search-match', active && directMatchTaskIds.has(row.dataset.taskId)));
     ganttRows.forEach((row) => row.classList.toggle('is-search-match', active && directMatchTaskIds.has(row.dataset.taskId)));
   }
@@ -323,7 +349,7 @@
     rows.forEach((row) => {
       const taskId = row.dataset.taskId;
       const collapsed = Array.from(collapseState).some((ancestorId) => ancestorId !== taskId && isDescendant(taskId, ancestorId));
-      const filteredOut = Boolean(searchState.keyword.trim())
+      const filteredOut = hasSearchTerms()
         && searchState.mode === 'filter'
         && !filterVisibleTaskIds.has(taskId);
       row.classList.toggle('is-collapsed-descendant', collapsed);

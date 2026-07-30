@@ -49,7 +49,7 @@ run = "PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright sh -c 'if [ -x .venv/bin/py
 
 [tasks.verify-manual]
 description = "Verify manual content and generated figures."
-run = "mise run manual-figures-check"
+run = "sh -c 'py=${WBSGEN_PYTHON:-.venv/bin/python}; \"$py\" -m pytest tests/test_manual_content.py && mise run manual-figures-check'"
 
 [tasks.verify-pr]
 description = "Run all blocking quality profiles before a pull request."

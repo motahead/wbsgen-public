@@ -827,6 +827,13 @@ def render_day_header(
     return "\n".join(cells)
 
 
+def render_print_grid_lines(scale: ChartScale, body_height: int) -> str:
+    return "\n".join(
+        f'            <line class="print-grid-line" x1="{x}" y1="0" x2="{x}" y2="{body_height}" />'
+        for x in range(0, scale.chart_width + 1, scale.day_width)
+    )
+
+
 def gantt_row_class(row: DisplayRow) -> str:
     classes = ["gantt-row"]
     if row.task.children and row.depth == 0:
@@ -949,6 +956,7 @@ def render_gantt_chart(
     milestone_band = render_milestone_band(placed_milestones)
     milestone_lines = render_milestone_lines(placed_milestones, body_height)
     milestone_lines_block = f"{milestone_lines}\n" if milestone_lines else ""
+    print_grid_lines = render_print_grid_lines(scale, body_height)
     return f"""    <section class="right-pane" style="--chart-w:{scale.chart_width}px;--gantt-right-gutter:24px;" aria-labelledby="gantt-title">
       <h2 id="gantt-title" class="sr-only">ガントチャート</h2>
       <div class="chart-scroll">
@@ -966,6 +974,9 @@ def render_gantt_chart(
 {weekends}
           </div>
           <div class="chart-grid" style="width:{scale.chart_width}px;height:{body_height}px;"></div>
+          <svg class="print-grid" width="{scale.chart_width}" height="{body_height}" viewBox="0 0 {scale.chart_width} {body_height}" aria-hidden="true">
+{print_grid_lines}
+          </svg>
           <div class="chart-rows">
 {row_content}
           </div>

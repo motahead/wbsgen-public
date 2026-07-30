@@ -19,6 +19,7 @@ from ..planner import (
     progress_analysis_for_task,
     working_dates_between,
 )
+from .tabular import PACE_UNATTAINABLE_LABEL, WBS_HEADERS
 
 try:
     import openpyxl
@@ -31,22 +32,6 @@ except ImportError as exc:  # pragma: no cover - 動作はユニットテスト�
 
 __all__ = ["build_workbook"]
 
-WBS_HEADERS = (
-    "ID",
-    "タスク名",
-    "担当者",
-    "計画開始",
-    "計画終了",
-    "実績開始",
-    "実績終了",
-    "進捗",
-    "期待進捗",
-    "差分",
-    "遅れ(営業日)",
-    "残り必要ペース",
-    "Issue",
-    "コメント",
-)
 WBS_COLUMN_WIDTHS = (8, 30, 12, 11, 11, 11, 11, 8, 9, 8, 11, 13, 8, 30)
 DETAIL_FIRST_COL_LETTER = "C"
 DETAIL_LAST_COL_LETTER = "O"
@@ -74,7 +59,6 @@ PERCENT_FORMAT = "0%"
 DELTA_FORMAT = '+0"pt";-0"pt";0"pt"'
 DELAY_FORMAT = '0"日"'
 PACE_FORMAT = '0.0"%/日"'
-PACE_UNATTAINABLE_LABEL = "達成不能"
 ACTUAL_MARK = "■"
 # ■ が狭いサブ列からはみ出して基準日罫線を隠さないよう、分割数に応じて縮小する。
 ACTUAL_MARK_FONT_SIZES = {1: 11, 2: 8, 4: 5}

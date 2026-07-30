@@ -15,6 +15,7 @@ from .parser import load_json
 from .gov_holidays import load_gov_holidays
 from .planner import build_project_model
 from .render.html import render_html
+from .render.tabular import render_csv, render_markdown
 from .source import (
     SourceFormat,
     atomic_write_text,
@@ -39,6 +40,7 @@ from .update import (
     format_diff,
     format_json,
     move_task,
+    next_task_id,
     remove_holiday,
     remove_milestone,
     remove_task,
@@ -124,6 +126,94 @@ def _parse_column_widths_arg(value: str) -> dict[str, int]:
     return widths
 
 
+WBS_ID_HELP = "WBS ID (e.g. 1, 1.1, 2.3.1). Dot-separated positive integers; no leading zeros."
+WBS_DESTINATION_ID_HELP = (
+    "Destination WBS ID (e.g. 1, 1.1, 2.3.1). Dot-separated positive integers; "
+    "no leading zeros."
+)
+
+TASK_EXAMPLES = {
+    "add": (
+        "EXAMPLES:\n"
+        '  wbsgen task add project.html --id 2.1 --name "Design review" '
+        "--planned-start 2026-08-01 --planned-duration 3\n"
+        '  wbsgen task add project.html --parent-id 2 --name "Child task"\n'
+        '  wbsgen task add project.html --name "Release"\n'
+    ),
+    "update": (
+        "EXAMPLES:\n"
+        "  wbsgen task update project.html --id 2.1 --progress 50\n"
+    ),
+    "show": (
+        "EXAMPLES:\n"
+        "  wbsgen task show project.html --id 2.1\n"
+        "  wbsgen task show project.html --id 2.1 --complement\n"
+    ),
+    "remove": (
+        "EXAMPLES:\n"
+        "  wbsgen task remove project.html --id 2.1 --recursive\n"
+    ),
+    "move": (
+        "EXAMPLES:\n"
+        "  wbsgen task move project.html --id 2.1 --to 3.1\n"
+    ),
+}
+
+MILESTONE_EXAMPLES = {
+    "add": (
+        "EXAMPLES:\n"
+        '  wbsgen milestone add project.html --date 2026-08-10 --name "Release review"\n'
+    ),
+    "update": (
+        "EXAMPLES:\n"
+        '  wbsgen milestone update project.html --name "Release review" --new-date 2026-08-14\n'
+    ),
+    "show": (
+        "EXAMPLES:\n"
+        "  wbsgen milestone show project.html\n"
+    ),
+    "remove": (
+        "EXAMPLES:\n"
+        '  wbsgen milestone remove project.html --name "Release review"\n'
+    ),
+}
+
+HOLIDAY_EXAMPLES = {
+    "add": (
+        "EXAMPLES:\n"
+        '  wbsgen holiday add project.html --date 2026-08-11 --name "Mountain Day"\n'
+    ),
+    "update": (
+        "EXAMPLES:\n"
+        '  wbsgen holiday update project.html --date 2026-08-11 --name "Mountain Day (observed)"\n'
+    ),
+    "show": (
+        "EXAMPLES:\n"
+        "  wbsgen holiday show project.html\n"
+    ),
+    "remove": (
+        "EXAMPLES:\n"
+        "  wbsgen holiday remove project.html --date 2026-08-11\n"
+    ),
+    "merge": (
+        "EXAMPLES:\n"
+        "  wbsgen holiday merge project.html --from holidays.json\n"
+    ),
+    "import-gov": (
+        "EXAMPLES:\n"
+        "  wbsgen holiday import-gov project.html --csv holidays.csv\n"
+    ),
+}
+
+
+def _command_help_formatter(prog: str) -> argparse.RawDescriptionHelpFormatter:
+    return argparse.RawDescriptionHelpFormatter(prog, width=160)
+
+
+def add_input_html_argument(parser: argparse.ArgumentParser, help_text: str) -> None:
+    parser.add_argument("input_html", type=Path, metavar="INPUT_HTML", help=help_text)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="wbsgen",
@@ -159,130 +249,358 @@ def build_parser() -> argparse.ArgumentParser:
     )
     template_parser.set_defaults(handler=run_template)
 
-    generate_parser = commands.add_parser("generate", help="Generate an HTML source-of-truth from JSON.")
-    generate_parser.add_argument("input_json", type=Path, metavar="INPUT_JSON")
-    generate_parser.add_argument("-o", "--output", required=True, type=Path, metavar="OUTPUT_HTML")
-    generate_parser.add_argument("--overwrite", action="store_true")
+    generate_parser = commands.add_parser(
+        "generate",
+        help="Generate an HTML source-of-truth from JSON.",
+        epilog="EXAMPLES:\n  wbsgen generate project.json -o project.html\n",
+        formatter_class=_command_help_formatter,
+    )
+    generate_parser.add_argument("input_json", type=Path, metavar="INPUT_JSON", help="Input project JSON file.")
+    generate_parser.add_argument(
+        "-o", "--output", required=True, type=Path, metavar="OUTPUT_HTML", help="Output HTML file to write."
+    )
+    generate_parser.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing output file.")
     add_holidays_argument(generate_parser)
     generate_parser.set_defaults(handler=run_generate)
 
-    refresh_parser = commands.add_parser("refresh", help="Regenerate an HTML source-of-truth in place.")
-    refresh_parser.add_argument("input_html", type=Path, metavar="INPUT_HTML")
+    refresh_parser = commands.add_parser(
+        "refresh",
+        help="Regenerate an HTML source-of-truth in place.",
+        epilog="EXAMPLES:\n  wbsgen refresh project.html\n",
+        formatter_class=_command_help_formatter,
+    )
+    add_input_html_argument(refresh_parser, "HTML source-of-truth file to regenerate in place.")
     refresh_parser.set_defaults(handler=run_refresh)
 
-    validate_parser = commands.add_parser("validate", help="Validate JSON or WBS-GEN HTML source data.")
-    validate_parser.add_argument("input_path", type=Path, metavar="INPUT")
-    validate_parser.add_argument("--json", action="store_true")
+    validate_parser = commands.add_parser(
+        "validate",
+        help="Validate JSON or WBS-GEN HTML source data.",
+        epilog="EXAMPLES:\n  wbsgen validate project.html\n",
+        formatter_class=_command_help_formatter,
+    )
+    validate_parser.add_argument(
+        "input_path", type=Path, metavar="INPUT", help="JSON or WBS-GEN HTML file to validate."
+    )
+    validate_parser.add_argument(
+        "--json", action="store_true", help="Print the validation report as JSON instead of human-readable text."
+    )
     validate_parser.set_defaults(handler=run_validate)
 
-    version_parser = commands.add_parser("version", help="Show CLI or source generator version.")
-    version_parser.add_argument("input_path", type=Path, metavar="INPUT", nargs="?")
+    version_parser = commands.add_parser(
+        "version",
+        help="Show CLI or source generator version.",
+        epilog="EXAMPLES:\n  wbsgen version\n  wbsgen version project.html\n",
+        formatter_class=_command_help_formatter,
+    )
+    version_parser.add_argument(
+        "input_path",
+        type=Path,
+        metavar="INPUT",
+        nargs="?",
+        help="JSON or HTML file to read generator version from. Omit to print the CLI version only.",
+    )
     version_parser.set_defaults(handler=run_version)
 
     export_parser = commands.add_parser("export", help="Export a report in another format.")
     export_commands = export_parser.add_subparsers(dest="export_command", required=True, title="commands")
-    json_parser = export_commands.add_parser("json", help="Export embedded JSON from HTML.")
-    json_parser.add_argument("input_html", type=Path, metavar="INPUT_HTML")
-    json_parser.add_argument("-o", "--output", type=Path, metavar="OUTPUT_JSON")
-    json_parser.add_argument("--overwrite", action="store_true")
+    json_parser = export_commands.add_parser(
+        "json",
+        help="Export embedded JSON from HTML.",
+        epilog="EXAMPLES:\n  wbsgen export json project.html -o project.json\n",
+        formatter_class=_command_help_formatter,
+    )
+    add_input_html_argument(json_parser, "HTML source-of-truth file to read.")
+    json_parser.add_argument(
+        "-o", "--output", type=Path, metavar="OUTPUT_JSON", help="Output JSON file to write. Omit to print to stdout."
+    )
+    json_parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Allow overwriting an existing output file. Requires -o/--output.",
+    )
     json_parser.set_defaults(handler=run_export_json)
-    xlsx_parser = export_commands.add_parser("xlsx", help="Export JSON or HTML source data as XLSX.")
-    xlsx_parser.add_argument("input_path", type=Path, metavar="INPUT")
-    xlsx_parser.add_argument("-o", "--output", type=Path, required=True, metavar="OUTPUT_XLSX")
-    xlsx_parser.add_argument("--day-split", type=int, choices=(1, 2, 4), default=1)
-    xlsx_parser.add_argument("--overwrite", action="store_true")
+    xlsx_parser = export_commands.add_parser(
+        "xlsx",
+        help="Export JSON or HTML source data as XLSX.",
+        epilog="EXAMPLES:\n  wbsgen export xlsx project.html -o report.xlsx\n",
+        formatter_class=_command_help_formatter,
+    )
+    xlsx_parser.add_argument("input_path", type=Path, metavar="INPUT", help="JSON or HTML source file to export.")
+    xlsx_parser.add_argument(
+        "-o", "--output", type=Path, required=True, metavar="OUTPUT_XLSX", help="Output XLSX file to write."
+    )
+    xlsx_parser.add_argument(
+        "--day-split",
+        type=int,
+        choices=(1, 2, 4),
+        default=1,
+        help=(
+            "Number of Gantt columns per day (default: 1). Higher values shrink mark "
+            "text so date gridlines stay visible."
+        ),
+    )
+    xlsx_parser.add_argument("--overwrite", action="store_true", help="Allow overwriting an existing output file.")
     xlsx_parser.set_defaults(handler=run_export_xlsx)
+    markdown_parser = export_commands.add_parser("markdown", aliases=("md",), help="Export JSON or HTML source data as Markdown.")
+    markdown_parser.add_argument("input_path", type=Path, metavar="INPUT")
+    markdown_parser.add_argument("-o", "--output", type=Path, metavar="OUTPUT_MD")
+    markdown_parser.add_argument("--overwrite", action="store_true")
+    markdown_parser.set_defaults(handler=run_export_markdown)
+    csv_parser = export_commands.add_parser("csv", help="Export JSON or HTML source data as CSV.")
+    csv_parser.add_argument("input_path", type=Path, metavar="INPUT")
+    csv_parser.add_argument("-o", "--output", type=Path, metavar="OUTPUT_CSV")
+    csv_parser.add_argument("--encoding", choices=("utf-8", "utf-8-sig", "cp932", "sjis"), default="utf-8")
+    csv_parser.add_argument("--overwrite", action="store_true")
+    csv_parser.set_defaults(handler=run_export_csv)
 
     project_parser = commands.add_parser("project", help="Show or update project fields in HTML.")
     project_commands = project_parser.add_subparsers(dest="project_command", required=True, title="commands")
-    project_show_parser = project_commands.add_parser("show", help="Print project fields as JSON.")
-    project_show_parser.add_argument("input_html", type=Path, metavar="INPUT_HTML")
+    project_show_parser = project_commands.add_parser(
+        "show",
+        help="Print project fields as JSON.",
+        epilog="EXAMPLES:\n  wbsgen project show project.html\n",
+        formatter_class=_command_help_formatter,
+    )
+    add_input_html_argument(project_show_parser, "HTML source-of-truth file to read.")
     project_show_parser.set_defaults(handler=run_html_command)
-    project_update_parser = project_commands.add_parser("update", help="Update project fields in HTML.")
-    project_update_parser.add_argument("input_html", type=Path, metavar="INPUT_HTML")
+    project_update_parser = project_commands.add_parser(
+        "update",
+        help="Update project fields in HTML.",
+        epilog="EXAMPLES:\n  wbsgen project update project.html --status-date 2026-08-01\n",
+        formatter_class=_command_help_formatter,
+    )
+    add_input_html_argument(project_update_parser, "HTML source-of-truth file to update.")
     add_project_field_arguments(project_update_parser)
-    project_update_parser.add_argument("--clear", action="append", nargs="+", choices=sorted(PROJECT_CLEAR_FIELDS))
+    project_update_parser.add_argument(
+        "--clear",
+        action="append",
+        nargs="+",
+        choices=sorted(PROJECT_CLEAR_FIELDS),
+        help=(
+            "Clear one or more optional project fields instead of setting them "
+            "(space-separated), e.g. --clear end-date issue-base-url."
+        ),
+    )
     add_dry_run_argument(project_update_parser)
     project_update_parser.set_defaults(handler=run_html_command)
 
     task_parser = commands.add_parser("task", help="Manage tasks in HTML.")
     task_commands = task_parser.add_subparsers(dest="task_command", required=True, title="commands")
     for name in ("add", "update", "show", "remove", "move"):
-        task_command_parser = task_commands.add_parser(name, help=f"{name.title()} a task.")
-        task_command_parser.add_argument("input_html", type=Path, metavar="INPUT_HTML")
-        task_command_parser.add_argument("--id", required=True)
+        task_command_parser = task_commands.add_parser(
+            name,
+            help=f"{name.title()} a task.",
+            epilog=TASK_EXAMPLES[name],
+            formatter_class=_command_help_formatter,
+        )
+        add_input_html_argument(task_command_parser, "HTML source-of-truth file to read or update.")
         if name == "add":
+            id_selector = task_command_parser.add_mutually_exclusive_group()
+            id_selector.add_argument("--id", help=WBS_ID_HELP)
+            id_selector.add_argument(
+                "--parent-id",
+                help=(
+                    "Existing parent WBS ID. Cannot be used with --id; omitting both "
+                    "adds a top-level task using the next ID."
+                ),
+            )
             add_task_field_arguments(task_command_parser, name_required=True)
             add_dry_run_argument(task_command_parser)
         elif name == "update":
+            task_command_parser.add_argument("--id", required=True, help=WBS_ID_HELP)
             add_task_field_arguments(task_command_parser)
-            task_command_parser.add_argument("--clear", action="append", nargs="+", choices=sorted(TASK_CLEAR_FIELDS))
+            task_command_parser.add_argument(
+                "--clear",
+                action="append",
+                nargs="+",
+                choices=sorted(TASK_CLEAR_FIELDS),
+                help=(
+                    "Clear one or more optional task fields instead of setting them "
+                    "(space-separated), e.g. --clear assignee comment."
+                ),
+            )
             add_dry_run_argument(task_command_parser)
         elif name == "show":
-            task_command_parser.add_argument("--direct", action="store_true")
-            task_command_parser.add_argument("--include-generated", action="store_true")
+            task_command_parser.add_argument("--id", required=True, help=WBS_ID_HELP)
+            task_command_parser.add_argument(
+                "--direct",
+                action="store_true",
+                help=(
+                    "Limit parents/children to the direct parent and direct children "
+                    "only (default: include all ancestors and descendants)."
+                ),
+            )
+            task_command_parser.add_argument(
+                "--complement",
+                action="store_true",
+                help=(
+                    "Complement the output with generated (auto-numbered) ancestor/descendant "
+                    "tasks and computed values (e.g. holiday-aware planned end date) that are "
+                    "absent from the source JSON. Use this to check a predecessor task's "
+                    "computed planned end date via `task show`. Complemented fields are "
+                    "derived, read-only values; writing them back into the source JSON has "
+                    "no effect."
+                ),
+            )
         elif name == "remove":
-            task_command_parser.add_argument("--recursive", action="store_true")
+            task_command_parser.add_argument("--id", required=True, help=WBS_ID_HELP)
+            task_command_parser.add_argument(
+                "--recursive",
+                action="store_true",
+                help="Also remove all descendant tasks. Required when the task has children.",
+            )
             add_dry_run_argument(task_command_parser)
         else:
-            task_command_parser.add_argument("--to", required=True, metavar="ID")
+            task_command_parser.add_argument("--id", required=True, help=WBS_ID_HELP)
+            task_command_parser.add_argument("--to", required=True, metavar="ID", help=WBS_DESTINATION_ID_HELP)
             add_dry_run_argument(task_command_parser)
         task_command_parser.set_defaults(handler=run_html_command)
 
     milestone_parser = commands.add_parser("milestone", help="Manage milestones in HTML.")
     milestone_commands = milestone_parser.add_subparsers(dest="milestone_command", required=True, title="commands")
     for name in ("add", "update", "show", "remove"):
-        milestone_command_parser = milestone_commands.add_parser(name, help=f"{name.title()} a milestone.")
-        milestone_command_parser.add_argument("input_html", type=Path, metavar="INPUT_HTML")
+        milestone_command_parser = milestone_commands.add_parser(
+            name,
+            help=f"{name.title()} a milestone.",
+            epilog=MILESTONE_EXAMPLES[name],
+            formatter_class=_command_help_formatter,
+        )
+        milestone_help = "HTML source-of-truth file to update." if name != "show" else "HTML source-of-truth file to read."
+        add_input_html_argument(milestone_command_parser, milestone_help)
         if name == "add":
-            milestone_command_parser.add_argument("--date", required=True)
-            milestone_command_parser.add_argument("--name", required=True)
+            milestone_command_parser.add_argument(
+                "--date", required=True, help="Milestone date (YYYY-MM-DD)."
+            )
+            milestone_command_parser.add_argument("--name", required=True, help="Milestone name.")
             add_dry_run_argument(milestone_command_parser)
         elif name == "update":
-            milestone_command_parser.add_argument("--name", required=True)
-            milestone_command_parser.add_argument("--date")
-            milestone_command_parser.add_argument("--new-date")
-            milestone_command_parser.add_argument("--new-name")
+            milestone_command_parser.add_argument(
+                "--name", required=True, help="Existing milestone name to update."
+            )
+            milestone_command_parser.add_argument(
+                "--date",
+                help=(
+                    "Existing milestone date (YYYY-MM-DD), needed only to disambiguate "
+                    "when multiple milestones share the same name."
+                ),
+            )
+            milestone_command_parser.add_argument(
+                "--new-date",
+                help=(
+                    "New milestone date (YYYY-MM-DD). At least one of --new-date or "
+                    "--new-name is required."
+                ),
+            )
+            milestone_command_parser.add_argument(
+                "--new-name",
+                help="New milestone name. At least one of --new-date or --new-name is required.",
+            )
             add_dry_run_argument(milestone_command_parser)
         elif name == "remove":
-            milestone_command_parser.add_argument("--name", required=True)
-            milestone_command_parser.add_argument("--date")
+            milestone_command_parser.add_argument(
+                "--name", required=True, help="Milestone name to remove."
+            )
+            milestone_command_parser.add_argument(
+                "--date",
+                help=(
+                    "Milestone date (YYYY-MM-DD), needed only to disambiguate when "
+                    "multiple milestones share the same name."
+                ),
+            )
             add_dry_run_argument(milestone_command_parser)
         milestone_command_parser.set_defaults(handler=run_html_command)
 
     holiday_parser = commands.add_parser("holiday", help="Manage holidays in HTML.")
     holiday_commands = holiday_parser.add_subparsers(dest="holiday_command", required=True, title="commands")
     for name in ("add", "update", "show", "remove", "merge", "import-gov"):
-        holiday_command_parser = holiday_commands.add_parser(name, help=f"{name.title()} holidays.")
-        holiday_command_parser.add_argument("input_html", type=Path, metavar="INPUT_HTML")
+        holiday_command_parser = holiday_commands.add_parser(
+            name,
+            help=f"{name.title()} holidays.",
+            epilog=HOLIDAY_EXAMPLES[name],
+            formatter_class=_command_help_formatter,
+        )
+        holiday_help = "HTML source-of-truth file to read." if name == "show" else "HTML source-of-truth file to update."
+        add_input_html_argument(holiday_command_parser, holiday_help)
         if name == "add":
-            holiday_command_parser.add_argument("--date", required=True)
-            holiday_command_parser.add_argument("--name")
+            holiday_command_parser.add_argument("--date", required=True, help="Holiday date (YYYY-MM-DD).")
+            holiday_command_parser.add_argument("--name", help="Holiday name.")
             add_dry_run_argument(holiday_command_parser)
         elif name == "update":
-            holiday_command_parser.add_argument("--date", required=True)
+            holiday_command_parser.add_argument(
+                "--date", required=True, help="Existing holiday date (YYYY-MM-DD) to update."
+            )
             changes = holiday_command_parser.add_mutually_exclusive_group()
-            changes.add_argument("--name")
-            changes.add_argument("--clear", choices=("name",))
-            holiday_command_parser.add_argument("--new-date")
+            changes.add_argument(
+                "--name",
+                help=(
+                    "New holiday name. At least one of --name, --clear, or --new-date "
+                    "is required."
+                ),
+            )
+            changes.add_argument(
+                "--clear",
+                choices=("name",),
+                help=(
+                    "Clear the holiday name instead of setting it. At least one of "
+                    "--name, --clear, or --new-date is required."
+                ),
+            )
+            holiday_command_parser.add_argument(
+                "--new-date",
+                help=(
+                    "New holiday date (YYYY-MM-DD) to move the holiday to. At least one "
+                    "of --name, --clear, or --new-date is required."
+                ),
+            )
             add_dry_run_argument(holiday_command_parser)
         elif name == "remove":
-            holiday_command_parser.add_argument("--date", required=True)
+            holiday_command_parser.add_argument(
+                "--date", required=True, help="Holiday date (YYYY-MM-DD) to remove."
+            )
             add_dry_run_argument(holiday_command_parser)
         elif name == "merge":
-            holiday_command_parser.add_argument("--from", dest="holidays_json", required=True, type=Path, metavar="HOLIDAYS_JSON")
+            holiday_command_parser.add_argument(
+                "--from",
+                dest="holidays_json",
+                required=True,
+                type=Path,
+                metavar="HOLIDAYS_JSON",
+                help="External JSON file with a top-level holidays array to merge in, keyed by date.",
+            )
             add_dry_run_argument(holiday_command_parser)
         elif name == "import-gov":
             source = holiday_command_parser.add_mutually_exclusive_group()
-            source.add_argument("--url")
-            source.add_argument("--csv", dest="csv_path", type=Path, metavar="PATH")
+            source.add_argument(
+                "--url",
+                help=(
+                    "HTTPS URL of a Cabinet-Office-compatible holiday CSV. Defaults to "
+                    "the built-in official URL when omitted. Only holidays within the "
+                    "current display range are imported."
+                ),
+            )
+            source.add_argument(
+                "--csv",
+                dest="csv_path",
+                type=Path,
+                metavar="PATH",
+                help=(
+                    "Local Cabinet-Office-compatible CSV file (CP932 encoding) to import "
+                    "from. Uses no network access. Only holidays within the current "
+                    "display range are imported."
+                ),
+            )
             add_dry_run_argument(holiday_command_parser)
         holiday_command_parser.set_defaults(handler=run_html_command)
 
     display_parser = commands.add_parser("display", help="Show or update display settings in HTML.")
     display_commands = display_parser.add_subparsers(dest="display_command", required=True, title="commands")
-    display_show_parser = display_commands.add_parser("show", help="Print display settings as JSON.")
-    display_show_parser.add_argument("input_html", type=Path, metavar="INPUT_HTML")
+    display_show_parser = display_commands.add_parser(
+        "show",
+        help="Print display settings as JSON.",
+        epilog="EXAMPLES:\n  wbsgen display show project.html\n",
+        formatter_class=_command_help_formatter,
+    )
+    add_input_html_argument(display_show_parser, "HTML source-of-truth file to read.")
     display_show_parser.set_defaults(handler=run_html_command)
 
     display_update_parser = display_commands.add_parser("update", help="Update display settings in HTML.")
@@ -291,33 +609,95 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     display_standard_parser = display_update_targets.add_parser(
-        "standard", help="Update standard view column visibility, width, and order."
+        "standard",
+        help="Update standard view column visibility, width, and order.",
+        epilog="EXAMPLES:\n  wbsgen display update standard project.html --visible all,-comment\n",
+        formatter_class=_command_help_formatter,
     )
-    display_standard_parser.add_argument("input_html", type=Path, metavar="INPUT_HTML")
-    display_standard_parser.add_argument("--visible")
-    display_standard_parser.add_argument("--width", type=_parse_column_widths_arg)
-    display_standard_parser.add_argument("--order")
+    add_input_html_argument(display_standard_parser, "HTML source-of-truth file to update.")
     display_standard_parser.add_argument(
-        "--clear", action="append", choices=("visible", "width", "order")
+        "--visible",
+        help=(
+            "Comma-separated column visibility list (keys: planned, actual, progress, "
+            "expected, issue, comment, assignee). Use '*' or 'all' for every column, "
+            "or 'all,-key' to exclude a column ('-key' must be combined with '*'/'all'; "
+            "'*'/'all' cannot be mixed with plain keys)."
+        ),
+    )
+    display_standard_parser.add_argument(
+        "--width",
+        type=_parse_column_widths_arg,
+        help=(
+            "Column width overrides as comma-separated key=value pairs (keys: name, "
+            "assignee, comment; value >= 40), e.g. name=260,comment=180."
+        ),
+    )
+    display_standard_parser.add_argument(
+        "--order",
+        help=(
+            "Comma-separated column display order (keys: assignee, planned-period, "
+            "actual-period, progress, expected-progress, issue). Omitted keys are "
+            "appended in their default order."
+        ),
+    )
+    display_standard_parser.add_argument(
+        "--clear",
+        action="append",
+        choices=("visible", "width", "order"),
+        help=(
+            "Clear one or more of visible/width/order instead of setting them. "
+            "Repeat the flag to clear several, e.g. --clear visible --clear order."
+        ),
     )
     add_dry_run_argument(display_standard_parser)
     display_standard_parser.set_defaults(handler=run_html_command)
 
     display_analysis_parser = display_update_targets.add_parser(
-        "analysis", help="Update analysis view column order."
+        "analysis",
+        help="Update analysis view column order.",
+        epilog="EXAMPLES:\n  wbsgen display update analysis project.html --order assignee,delta\n",
+        formatter_class=_command_help_formatter,
     )
-    display_analysis_parser.add_argument("input_html", type=Path, metavar="INPUT_HTML")
-    display_analysis_parser.add_argument("--order")
-    display_analysis_parser.add_argument("--clear", action="append", choices=("order",))
+    add_input_html_argument(display_analysis_parser, "HTML source-of-truth file to update.")
+    display_analysis_parser.add_argument(
+        "--order",
+        help=(
+            "Comma-separated column display order (keys: assignee, progress, "
+            "expected-progress, delta, delay, pace). Omitted keys are appended in "
+            "their default order."
+        ),
+    )
+    display_analysis_parser.add_argument(
+        "--clear",
+        action="append",
+        choices=("order",),
+        help="Clear the order override instead of setting it.",
+    )
     add_dry_run_argument(display_analysis_parser)
     display_analysis_parser.set_defaults(handler=run_html_command)
 
     display_layers_parser = display_update_targets.add_parser(
-        "layers", help="Update Gantt layer visibility."
+        "layers",
+        help="Update Gantt layer visibility.",
+        epilog="EXAMPLES:\n  wbsgen display update layers project.html --visible all,-tooltip\n",
+        formatter_class=_command_help_formatter,
     )
-    display_layers_parser.add_argument("input_html", type=Path, metavar="INPUT_HTML")
-    display_layers_parser.add_argument("--visible")
-    display_layers_parser.add_argument("--clear", action="append", choices=("visible",))
+    add_input_html_argument(display_layers_parser, "HTML source-of-truth file to update.")
+    display_layers_parser.add_argument(
+        "--visible",
+        help=(
+            "Comma-separated Gantt layer visibility list (keys: inazuma, actual, "
+            "highlight, tooltip, delayHighlight, milestone). Use '*' or 'all' for "
+            "every layer, or 'all,-key' to exclude a layer ('-key' must be combined "
+            "with '*'/'all'; '*'/'all' cannot be mixed with plain keys)."
+        ),
+    )
+    display_layers_parser.add_argument(
+        "--clear",
+        action="append",
+        choices=("visible",),
+        help="Clear the visible override instead of setting it.",
+    )
     add_dry_run_argument(display_layers_parser)
     display_layers_parser.set_defaults(handler=run_html_command)
     return parser
@@ -392,7 +772,7 @@ def run_html_command(args: argparse.Namespace) -> int:
         if args.command == "project":
             payload = show_project(data)
         elif args.command == "task":
-            payload = show_task(data, args.id, direct=args.direct, include_generated=args.include_generated)
+            payload = show_task(data, args.id, direct=args.direct, complement=args.complement)
         elif args.command == "milestone":
             payload = show_milestones(data)
         elif args.command == "holiday":
@@ -407,7 +787,8 @@ def run_html_command(args: argparse.Namespace) -> int:
         candidate, _ = update_project(data, selected_update_values(args), clear_fields)
     elif args.command == "task":
         if subcommand == "add":
-            candidate, _ = add_task(data, args.id, selected_update_values(args))
+            task_id = args.id if args.id is not None else next_task_id(data, args.parent_id)
+            candidate, _ = add_task(data, task_id, selected_update_values(args))
         elif subcommand == "update":
             candidate, _ = update_task(data, args.id, selected_update_values(args), clear_fields)
         elif subcommand == "remove":
@@ -674,6 +1055,45 @@ def run_export_xlsx(args: argparse.Namespace) -> int:
         result, source_label=str(args.input_path), day_split=args.day_split
     )
     _atomic_save_workbook(workbook, args.output)
+    return 0
+
+
+def _export_result(input_path: Path):
+    source = _load_source_or_error(input_path)
+    read_generator_version(source.data)
+    result = build_project_model(source.data)
+    _print_validation(result, as_json=False)
+    return source, result
+
+
+def run_export_markdown(args: argparse.Namespace) -> int:
+    source, result = _export_result(args.input_path)
+    if result.validation.has_errors:
+        return 1
+    content = render_markdown(result)
+    if args.output is None:
+        print(content, end="")
+    else:
+        ensure_output_available(source.path, args.output, overwrite=args.overwrite)
+        atomic_write_text(args.output, content)
+    return 0
+
+
+def run_export_csv(args: argparse.Namespace) -> int:
+    source, result = _export_result(args.input_path)
+    if result.validation.has_errors:
+        return 1
+    content = render_csv(result)
+    if args.output is None:
+        print(content, end="")
+        return 0
+    encoding = "cp932" if args.encoding == "sjis" else args.encoding
+    try:
+        content.encode(encoding)
+    except UnicodeEncodeError as exc:
+        raise ValueError(f"CSV cannot be encoded as {args.encoding}; use --encoding utf-8") from exc
+    ensure_output_available(source.path, args.output, overwrite=args.overwrite)
+    atomic_write_text(args.output, content, encoding=encoding)
     return 0
 
 

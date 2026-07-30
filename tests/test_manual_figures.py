@@ -38,6 +38,7 @@ class ManualFigureSourceTests:
         assert paths['fig2_html'] == Path('docs/manual-figures/fig2.html')
         assert paths['fig2_png'] == Path('docs/manual-figures/fig2.png')
 
+
 class TestManualFigureInputTests:
 
     def load(self, name: str) -> dict:
@@ -59,3 +60,14 @@ class TestManualFigureCheckTests:
         with mock.patch('tools.render_manual_figures.figure_paths') as figure_paths:
             figure_paths.return_value = {'fig1_mmd': Path('missing.mmd'), 'fig1_svg': Path('missing.svg'), 'fig2_json': Path('missing-fig2.json'), 'fig2_html': Path('missing-fig2.html'), 'fig2_png': Path('missing-fig2.png')}
             assert run(parse_args(['--check'])) == 1
+
+
+def test_fig2_html_uses_a_fixed_generated_timestamp(tmp_path):
+    from tools.render_manual_figures import FIGURE_GENERATED_AT, generate_html
+
+    source = tmp_path / "figure.json"
+    output = tmp_path / "figure.html"
+    source.write_text(Path("examples/manual-figures-fig2.json").read_text(encoding="utf-8"), encoding="utf-8")
+    generate_html(source, output)
+
+    assert f"生成日時 {FIGURE_GENERATED_AT}" in output.read_text(encoding="utf-8")

@@ -16,7 +16,7 @@ WBS-GEN は、利用者が編集する JSON、そこから生成する HTML、�
 | `verify-code` | ソース単位の回帰、coverage、pytest 収集 | `mise run verify-code` | 実装後 |
 | `verify-distribution` | 固定 fixture で配布 zipapp の公開 CLI を一周 | `mise run verify-distribution` | 最終確認時 |
 | `verify-visual` | visual fixture の生成 HTML と design SSOT の構造パリティ | `mise run verify-visual` | 表示変更後 |
-| `verify-manual` | MANUAL 図版・内容の整合 | `mise run verify-manual` | 最終確認時 |
+| `verify-manual` | MANUAL 内容テストと図版の整合 | `mise run verify-manual` | 最終確認時 |
 | `verify-pr` | 上記4 profile の最終確認用の合成 | `mise run verify-pr` | 最終確認時 |
 | `qa-explore` | seed 付きランダム入力での探索的耐性確認 | `mise run qa-explore -- --seed N` | 明示的なQAとして必要なときに実行する。通常の実行タイミングには含めない |
 
@@ -58,7 +58,9 @@ WBS-GEN は、利用者が編集する JSON、そこから生成する HTML、�
 - シナリオ終盤で `export json` → JSON編集 → `generate` → `export json` を実行し、意味的な情報を失わないことを確認する。
 - JSON入力とHTML入力の双方から `export xlsx` を実行し、Office Open XMLのZIP整合、ワークブック、プロジェクト名、WBS行を確認する。
 
-これは固定・再現可能な回帰検証である。通常利用に近いランダムな組合せを網羅する目的は `qa-explore` に分離する。
+固定契約では、各CLI系統について意味が独立する重要な入力形式を確認する。オプションのエラー、排他、境界値、詳細な組合せは `verify-code` の unit test で扱い、通常利用に近いランダムデータ上の更新経路の連結は `qa-explore` で扱う。
+
+これは固定・再現可能な回帰検証である。MANUAL の品質は `verify-manual` が内容テストと図版の最新性を確認する。通常利用に近いランダムな組合せを網羅する目的は `qa-explore` に分離する。
 
 ## Visual design contract
 

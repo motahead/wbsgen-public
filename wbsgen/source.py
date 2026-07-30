@@ -211,7 +211,7 @@ def ensure_output_available(
         raise ValueError(f"output file already exists: {output_path}")
 
 
-def atomic_write_text(path: Path, content: str) -> None:
+def atomic_write_text(path: Path, content: str, *, encoding: str = "utf-8") -> None:
     """Atomically replace *path* without following an existing symlink."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -243,7 +243,7 @@ def atomic_write_text(path: Path, content: str) -> None:
 
         if target_mode is not None and hasattr(os, "fchmod"):
             os.fchmod(descriptor, target_mode)
-        with os.fdopen(descriptor, "w", encoding="utf-8") as temporary:
+        with os.fdopen(descriptor, "w", encoding=encoding) as temporary:
             descriptor = None
             temporary.write(content)
         os.replace(temporary_path, path)

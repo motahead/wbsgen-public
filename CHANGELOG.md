@@ -12,6 +12,23 @@ release.ymlが起動時に`$GITHUB_REF_NAME`と完全一致する見出しを機
 Breaking Changeがある場合は、分類より前に `### Breaking Changes` として
 記載し、必要な移行手順を添える。
 
+## v3.3.0
+
+### Breaking Changes
+- `task show --include-generated` を `task show --complement` へ改名しました。旧オプションは使えません。既存のスクリプトや手順では `--include-generated` を `--complement` に置き換えてください。
+
+### 新機能
+- JSONまたは生成済みHTMLから、Markdown・CSV形式でWBSをエクスポートできるようになりました。Markdownは `export markdown` または `export md`、CSVは `export csv` を使います。
+- 生成HTMLをブラウザから印刷・PDF保存できるようになりました。印刷時は操作UIを除き、WBS表とガントを出力します。
+- `task add` でIDを省略したとき、`--parent-id` を指定すれば子タスクIDを、指定しなければ最上位IDを自動採番できるようになりました。
+- 検索で空白区切りの複数キーワードをAND条件として指定できるようになりました。先頭に `-` を付けると除外条件になります。
+
+### 改善
+- task関連コマンドのヘルプにWBS ID形式と利用例を追加し、`task show --complement` で計算値を補完表示できるようにしました。
+
+### 内部改善
+- 固定配布契約、MANUAL検証、探索QAの品質確認を強化しました。
+
 ## v3.2.1
 
 ### 改善

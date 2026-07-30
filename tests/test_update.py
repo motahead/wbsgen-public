@@ -4,7 +4,7 @@ import copy
 import tempfile
 from pathlib import Path
 from unittest import mock
-from wbsgen.update import add_holiday, add_milestone, add_task, atomic_write_text, format_diff, format_json, merge_holidays, move_task, remove_holiday, remove_milestone, remove_task, show_holidays, show_display, show_project, show_milestones, show_task, update_holiday, update_display_analysis, update_display_layers, update_display_standard, update_milestone, update_project, update_task
+from wbsgen.update import add_holiday, add_milestone, add_task, atomic_write_text, format_diff, format_json, merge_holidays, move_task, next_task_id, remove_holiday, remove_milestone, remove_task, show_holidays, show_display, show_project, show_milestones, show_task, update_holiday, update_display_analysis, update_display_layers, update_display_standard, update_milestone, update_project, update_task
 
 class TestJsonUpdateTests:
 
@@ -15,36 +15,122 @@ class TestJsonUpdateTests:
         return {'project': {'name': '階層プロジェクト'}, 'tasks': [{'id': '1', 'name': '親タスク'}, {'id': '1.1', 'name': '子タスク'}, {'id': '1.1.1.1', 'name': 'ひ孫タスク'}, {'id': '2', 'name': '別タスク'}]}
 
     def test_show_task_returns_source_ancestors_and_descendants(self):
-        result = show_task(self.hierarchy_data(), '1.1', direct=False, include_generated=False)
+        result = show_task(self.hierarchy_data(), '1.1', direct=False, complement=False)
         assert result['scope'] == 'all'
         assert [item['id'] for item in result['parents']] == ['1']
         assert result['task']['id'] == '1.1'
         assert [item['id'] for item in result['children']] == ['1.1.1.1']
 
     def test_show_task_can_select_generated_task(self):
-        result = show_task(self.hierarchy_data(), '1.1.1', direct=False, include_generated=True)
-        assert result['task'] == {'id': '1.1.1', 'name': 'タスクを定義してください', 'generated': True}
+        result = show_task(self.hierarchy_data(), '1.1.1', direct=False, complement=True)
+        assert result['task'] == {'id': '1.1.1', 'name': 'タスクを定義してください', 'generated': True, 'progress': 0}
         assert [item['id'] for item in result['parents']] == ['1', '1.1']
         assert [item['id'] for item in result['children']] == ['1.1.1.1']
 
     def test_show_task_direct_scope_returns_only_direct_parent_and_children(self):
-        result = show_task(self.hierarchy_data(), '1.1.1.1', direct=True, include_generated=True)
+        result = show_task(self.hierarchy_data(), '1.1.1.1', direct=True, complement=True)
         assert result['scope'] == 'direct'
         assert [item['id'] for item in result['parents']] == ['1.1.1']
         assert result['children'] == []
 
-    def test_show_task_include_generated_preserves_source_child_order(self):
+    def test_show_task_complement_preserves_source_child_order(self):
         data = {'project': {'name': '入力順プロジェクト'}, 'tasks': [{'id': '1', 'name': '親タスク'}, {'id': '1.2', 'name': '先に入力された子タスク'}, {'id': '1.1', 'name': '後に入力された子タスク'}]}
-        direct_result = show_task(data, '1', direct=True, include_generated=True)
-        all_result = show_task(data, '1', direct=False, include_generated=True)
+        direct_result = show_task(data, '1', direct=True, complement=True)
+        all_result = show_task(data, '1', direct=False, complement=True)
         assert [item['id'] for item in direct_result['children']] == ['1.2', '1.1']
         assert [item['id'] for item in all_result['children']] == ['1.2', '1.1']
 
     def test_show_task_rejects_generated_and_unknown_ids_when_not_selected(self):
         with pytest.raises(ValueError, match='task id not found'):
-            show_task(self.hierarchy_data(), '1.1.1', direct=False, include_generated=False)
+            show_task(self.hierarchy_data(), '1.1.1', direct=False, complement=False)
         with pytest.raises(ValueError, match='task id not found'):
-            show_task(self.hierarchy_data(), '9', direct=False, include_generated=True)
+            show_task(self.hierarchy_data(), '9', direct=False, complement=True)
+
+    def test_show_task_complement_adds_planned_end_without_overwriting_leaf_fields(self):
+        data = {
+            'project': {'name': 'P', 'statusDate': '2026-08-01'},
+            'tasks': [
+                {'id': '1', 'name': 'leaf', 'plannedStart': '2026-08-03', 'plannedDuration': 3, 'progress': 40},
+            ],
+        }
+        result = show_task(data, '1', direct=False, complement=True)
+        task = result['task']
+        assert task['plannedStart'] == '2026-08-03'
+        assert task['plannedDuration'] == 3
+        assert task['progress'] == 40
+        assert task['plannedEnd'] == '2026-08-05'
+
+    def test_show_task_complement_fills_parent_aggregate_fields(self):
+        data = {
+            'project': {'name': 'P', 'statusDate': '2026-08-01'},
+            'tasks': [
+                {'id': '1', 'name': 'parent'},
+                {'id': '1.1', 'name': 'child a', 'plannedStart': '2026-08-03', 'plannedDuration': 2, 'progress': 80},
+                {'id': '1.2', 'name': 'child b', 'plannedStart': '2026-08-05', 'plannedDuration': 1, 'progress': 20},
+            ],
+        }
+        result = show_task(data, '1', direct=False, complement=True)
+        task = result['task']
+        assert task == {
+            'id': '1',
+            'name': 'parent',
+            'plannedStart': '2026-08-03',
+            'plannedEnd': '2026-08-05',
+            'plannedDuration': 3,
+            'progress': 60,
+        }
+
+    def test_show_task_complement_fills_generated_task_computed_fields(self):
+        data = {
+            'project': {'name': 'P', 'statusDate': '2026-08-01'},
+            'tasks': [
+                {'id': '1.1', 'name': 'leaf', 'plannedStart': '2026-08-03', 'plannedDuration': 2, 'progress': 50},
+            ],
+        }
+        result = show_task(data, '1', direct=False, complement=True)
+        task = result['task']
+        assert task['generated'] is True
+        assert task['plannedStart'] == '2026-08-03'
+        assert task['plannedEnd'] == '2026-08-04'
+        assert task['plannedDuration'] == 2
+        assert task['progress'] == 50
+
+    def test_show_task_complement_omits_planned_end_when_not_computable(self):
+        data = {
+            'project': {'name': 'P', 'statusDate': '2026-08-01'},
+            'tasks': [{'id': '1', 'name': 'unplanned'}],
+        }
+        result = show_task(data, '1', direct=False, complement=True)
+        task = result['task']
+        assert 'plannedEnd' not in task
+        assert 'plannedStart' not in task
+        assert 'plannedDuration' not in task
+        # progress は未計画でも既定値0が計算されるため、原本に無いキーとして補完される。
+        assert task['progress'] == 0
+
+    def test_show_task_without_complement_never_adds_planned_end(self):
+        data = {
+            'project': {'name': 'P', 'statusDate': '2026-08-01'},
+            'tasks': [
+                {'id': '1', 'name': 'leaf', 'plannedStart': '2026-08-03', 'plannedDuration': 3},
+            ],
+        }
+        result = show_task(data, '1', direct=False, complement=False)
+        assert 'plannedEnd' not in result['task']
+
+    def test_show_task_complement_applies_to_parents_and_children_entries(self):
+        data = {
+            'project': {'name': 'P', 'statusDate': '2026-08-01'},
+            'tasks': [
+                {'id': '1', 'name': 'parent'},
+                {'id': '1.1', 'name': 'child', 'plannedStart': '2026-08-03', 'plannedDuration': 2, 'progress': 50},
+            ],
+        }
+        result = show_task(data, '1.1', direct=False, complement=True)
+        assert result['task']['plannedEnd'] == '2026-08-04'
+        assert result['parents'][0]['id'] == '1'
+        assert result['parents'][0]['plannedEnd'] == '2026-08-04'
+        assert result['parents'][0]['plannedStart'] == '2026-08-03'
 
     def test_remove_task_requires_recursive_and_preserves_input_order(self):
         with pytest.raises(ValueError, match='--recursive'):
@@ -64,6 +150,34 @@ class TestJsonUpdateTests:
         assert original == original_copy
         assert summary == 'added task 1.1'
         assert candidate['tasks'][-1] == {'id': '1.1', 'name': '調査', 'plannedStart': '2026-07-15', 'plannedDuration': 2, 'actualStart': '2026-07-15', 'actualEnd': '2026-07-16', 'progress': 100, 'issue': 88, 'comment': '完了', 'assignee': '担当者A'}
+
+    def test_next_task_id_uses_maximum_direct_numeric_sibling_without_filling_gaps(self):
+        data = {
+            'project': {'name': 'P'},
+            'tasks': [
+                {'id': '1', 'name': 'root'},
+                {'id': '2', 'name': 'root'},
+                {'id': '4', 'name': 'root'},
+                {'id': '03', 'name': 'leading zero'},
+                {'id': 'alpha', 'name': 'non-numeric'},
+                {'id': '1.1', 'name': 'child'},
+                {'id': '1.4', 'name': 'child'},
+                {'id': '1.4.9', 'name': 'grandchild'},
+                {'id': '1.x', 'name': 'non-numeric child'},
+            ],
+        }
+
+        assert next_task_id(data, None) == '5'
+        assert next_task_id(data, '1') == '1.5'
+        assert next_task_id({'project': {'name': 'P'}, 'tasks': [{'id': '1', 'name': 'root'}]}, '1') == '1.1'
+
+    def test_next_task_id_rejects_a_missing_parent_and_invalid_tasks_shape(self):
+        data = {'project': {'name': 'P'}, 'tasks': [{'id': '1', 'name': 'root'}]}
+
+        with pytest.raises(ValueError, match='parent task id not found: 9'):
+            next_task_id(data, '9')
+        with pytest.raises(ValueError, match='tasks must be an array'):
+            next_task_id({'project': {}, 'tasks': {}}, None)
 
     def test_update_task_changes_values_and_clears_multiple_optional_fields(self):
         original = self.base_data()
@@ -286,9 +400,9 @@ class TestHtmlSourceUpdateTests:
         generated_root = __import__('wbsgen').Task(id='1', name='generated', generated=True, children=[source_child])
         data = {'project': {'name': 'P'}, 'tasks': [{'id': '1.1', 'name': 'source'}]}
         with mock.patch('wbsgen.update._all_model_tasks', return_value={'1': generated_root, '1.1': source_child}):
-            generated = show_task(data, '1', direct=False, include_generated=True)
+            generated = show_task(data, '1', direct=False, complement=True)
         with mock.patch('wbsgen.update._all_model_tasks', return_value={'1.1': source_child}):
-            sparse = show_task(data, '1.1', direct=False, include_generated=True)
+            sparse = show_task(data, '1.1', direct=False, complement=True)
         assert generated['task']['generated'] == True
         assert [item['id'] for item in generated['children']] == ['1.1']
         assert sparse['parents'] == []
@@ -301,7 +415,7 @@ class TestHtmlSourceUpdateTests:
         source_root.children = [generated_child]
         data = {'project': {'name': 'P'}, 'tasks': [{'id': '1', 'name': 'root'}, {'id': '1.1.1', 'name': 'leaf'}]}
         with mock.patch('wbsgen.update._all_model_tasks', return_value={'1': source_root, '1.1': generated_child, '1.1.1': source_leaf}):
-            result = show_task(data, '1', direct=False, include_generated=True)
+            result = show_task(data, '1', direct=False, complement=True)
         assert [item['id'] for item in result['children']] == ['1.1', '1.1.1']
 
     def test_show_generated_descendant_reuses_cached_source_index(self):
@@ -312,7 +426,7 @@ class TestHtmlSourceUpdateTests:
         source_root.children = [generated_child, generated_child]
         data = {'project': {'name': 'P'}, 'tasks': [{'id': '1', 'name': 'root'}, {'id': '1.1.1', 'name': 'leaf'}]}
         with mock.patch('wbsgen.update._all_model_tasks', return_value={'1': source_root, '1.1': generated_child, '1.1.1': source_leaf}):
-            result = show_task(data, '1', direct=True, include_generated=True)
+            result = show_task(data, '1', direct=True, complement=True)
         assert [item['id'] for item in result['children']] == ['1.1', '1.1']
 
     def test_show_project_and_display_preserve_stored_values(self):

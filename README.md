@@ -21,7 +21,7 @@ WBS-GENは、WBSとガントチャートの管理を「ファイル1枚」に閉
 - 分析タブで差分・遅れ営業日・必要ペースを確認
 - マイルストーン表示、キーワード検索（フィルタ／ハイライト）
 - 休日データの取り込み（JSON直接指定・外部JSONファイル、または内閣府CSVの自動取得。自動取得のみインターネット接続が必要）
-- 表示列・表示レイヤーのカスタマイズ、URLクエリでの一時共有、JSON/XLSXエクスポート
+- 表示列・表示レイヤーのカスタマイズ、URLクエリでの一時共有、JSON/Markdown/CSV/XLSXエクスポート
 
 詳細は[配布用マニュアル](https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen-manual.html)を参照してください。
 
@@ -66,11 +66,13 @@ python3 wbsgen.pyz generate project.json -o project.html
 python3 wbsgen.pyz task update project.html --id 1.2 --progress 50
 python3 wbsgen.pyz refresh project.html
 python3 wbsgen.pyz export json project.html -o backup.json
+python3 wbsgen.pyz export markdown project.html -o project.md
+python3 wbsgen.pyz export csv project.json -o project.csv --encoding utf-8-sig
 ```
 
 更新コマンドは、埋め込みJSONを検証してHTML全体を再生成し、入力HTMLをアトミックに置き換えます。`--dry-run` は保存せずJSON差分だけを表示します。ブラウザー画面からの編集、クラウド同期の競合解決、自動同期は対象外です。
 
-JSONとHTMLのどちらも `validate` と `export xlsx` に渡せます。
+JSONとHTMLのどちらも `validate`、`export markdown`（別名 `export md`）、`export csv`、`export xlsx` に渡せます。Markdown は UTF-8 固定です。CSV は既定の UTF-8 に加えて、Excel 向けの `utf-8-sig`、Windows の Shift_JIS 相当である `cp932`（別名 `sjis`）を指定できます。
 
 ## 表示設定
 

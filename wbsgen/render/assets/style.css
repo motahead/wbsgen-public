@@ -954,6 +954,7 @@
       pointer-events: none;
       z-index: 2;
     }
+    .print-grid { display: none; }
     .chart-rows { z-index: 1; }
     .chart-overlay {
       pointer-events: none;
@@ -1354,3 +1355,65 @@
     }
     .warning-path { color: var(--muted); font-variant-numeric: tabular-nums; }
     .warning-task-id { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+    @media print {
+      body { background: #fff; }
+      .app {
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+      }
+      .search-drawer,
+      .app-tooltip,
+      .warning-window,
+      .holiday-window,
+      .view-controls,
+      .wbs-view-control,
+      .search-summary,
+      .warning-toggle,
+      .holiday-toggle,
+      .resize-handle,
+      .interaction-layer,
+      .warning-checkbox,
+      .holiday-checkbox {
+        display: none !important;
+      }
+      .topbar {
+        background: #fff;
+        border-bottom: 1px solid var(--border);
+        min-height: 0;
+        padding: 6px 8px;
+      }
+      .workspace {
+        min-height: 0;
+        overflow: visible;
+        width: max-content;
+      }
+      .chart-grid { background: none; }
+      .print-grid {
+        display: block;
+        inset: 0;
+        pointer-events: none;
+        position: absolute;
+        z-index: 2;
+      }
+      .print-grid-line {
+        fill: none;
+        stroke: rgba(148, 163, 184, 0.32);
+        stroke-width: 1;
+      }
+      .left-pane {
+        position: static;
+      }
+      .left-head,
+      .right-head {
+        position: static;
+      }
+      .left-head {
+        position: relative;
+      }
+      .wbs-row,
+      .gantt-row {
+        break-inside: avoid-page;
+        page-break-inside: avoid;
+      }
+    }

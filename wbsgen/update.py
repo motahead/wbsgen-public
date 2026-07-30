@@ -5,9 +5,10 @@ from __future__ import annotations
 import copy
 import difflib
 import json
+from datetime import date
 from pathlib import Path
 
-from .models import Task
+from .models import ComputedTask, Task
 from .parser import parse_holidays
 from .planner import build_project_model
 from .source import atomic_write_text as _atomic_write_text
@@ -18,6 +19,7 @@ __all__ = [
     "PROJECT_FIELD_OPTIONS",
     "TASK_CLEAR_FIELDS",
     "PROJECT_CLEAR_FIELDS",
+    "next_task_id",
     "add_task",
     "show_task",
     "remove_task",
@@ -105,11 +107,48 @@ def _all_model_tasks(data: dict[str, object]) -> dict[str, Task]:
     return tasks_by_id
 
 
+def _all_computed_tasks(data: dict[str, object]) -> dict[str, ComputedTask]:
+    result = build_project_model(data)
+    tasks_by_id: dict[str, ComputedTask] = {}
+
+    def visit(task: ComputedTask) -> None:
+        tasks_by_id[task.id] = task
+        for child in task.children:
+            visit(child)
+
+    for root in result.computed_roots:
+        visit(root)
+    return tasks_by_id
+
+
+_COMPLEMENT_FIELDS: tuple[tuple[str, str], ...] = (
+    ("plannedStart", "planned_start"),
+    ("plannedEnd", "planned_end"),
+    ("plannedDuration", "planned_duration"),
+    ("actualStart", "actual_start"),
+    ("actualEnd", "actual_end"),
+    ("progress", "progress"),
+)
+
+
+def _complement_task_dict(base: dict[str, object], computed: ComputedTask) -> dict[str, object]:
+    for json_key, attr in _COMPLEMENT_FIELDS:
+        if json_key in base:
+            continue
+        value = getattr(computed, attr)
+        if value is None:
+            continue
+        if isinstance(value, date):
+            value = value.isoformat()
+        base[json_key] = value
+    return base
+
+
 def show_task(
-    data: dict[str, object], task_id: str, *, direct: bool, include_generated: bool
+    data: dict[str, object], task_id: str, *, direct: bool, complement: bool
 ) -> dict[str, object]:
     source_tasks = _source_tasks_by_id(data)
-    if not include_generated:
+    if not complement:
         if task_id not in source_tasks:
             raise ValueError(f"task id not found: {task_id}")
 
@@ -122,11 +161,18 @@ def show_task(
         if task_id not in model_tasks:
             raise ValueError(f"task id not found: {task_id}")
 
+        computed_tasks = _all_computed_tasks(data)
+
         def to_dict(item_id: str) -> dict[str, object]:
             task = model_tasks[item_id]
             if task.source_index is None:
-                return _generated_task_dict(task)
-            return copy.deepcopy(source_tasks[item_id])
+                result_dict = _generated_task_dict(task)
+            else:
+                result_dict = copy.deepcopy(source_tasks[item_id])
+            computed = computed_tasks.get(item_id)
+            if computed is not None:
+                _complement_task_dict(result_dict, computed)
+            return result_dict
 
         known_ids = set(model_tasks)
 
@@ -140,7 +186,7 @@ def show_task(
     if direct:
         parent_ids = parent_ids[-1:]
 
-    if include_generated:
+    if complement:
         def descendants(task: Task) -> list[Task]:
             result: list[Task] = []
             for child in task.children:
@@ -234,6 +280,33 @@ def _clear_json_keys(
     if not values and not clear_fields:
         raise ValueError("at least one field must be set or cleared")
     return clear_json_keys
+
+
+def next_task_id(data: dict[str, object], parent_id: str | None) -> str:
+    """Return the next direct child ID, or the next top-level ID."""
+
+    tasks = _tasks(data)
+    if parent_id is not None and parent_id not in _source_tasks_by_id(data):
+        raise ValueError(f"parent task id not found: {parent_id}")
+
+    prefix = "" if parent_id is None else f"{parent_id}."
+    candidates: list[int] = []
+    for task in tasks:
+        if not isinstance(task, dict) or not isinstance((task_id := task.get("id")), str):
+            continue
+        if parent_id is None:
+            suffix = task_id
+            if "." in task_id:
+                continue
+        else:
+            if not task_id.startswith(prefix):
+                continue
+            suffix = task_id.removeprefix(prefix)
+        if suffix.isascii() and suffix.isdecimal() and not suffix.startswith("0"):
+            candidates.append(int(suffix))
+
+    number = max(candidates, default=0) + 1
+    return str(number) if parent_id is None else f"{parent_id}.{number}"
 
 
 def add_task(

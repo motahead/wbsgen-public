@@ -61,12 +61,26 @@ def _new_child_id(data: dict[str, Any]) -> str:
     return f"{parent_id}.{max(child_numbers, default=0) + 1}"
 
 
+def _new_root_id(data: dict[str, Any]) -> str:
+    root_numbers = [
+        int(task["id"])
+        for task in data["tasks"]
+        if task["id"].isdigit()
+    ]
+    return str(max(root_numbers, default=0) + 1)
+
+
 def _planned_leaf_tasks(data: dict[str, Any]) -> list[dict[str, Any]]:
     return [
         task
         for task in data["tasks"]
         if "assignee" in task and "plannedStart" in task and "plannedDuration" in task
     ]
+
+
+def _assert_task_present(data: dict[str, Any], task_id: str) -> None:
+    if not any(task["id"] == task_id for task in data["tasks"]):
+        raise AssertionError(f"task add did not create expected id: {task_id}")
 
 
 def seed_date(seed: int) -> date:
@@ -113,6 +127,34 @@ def run_workflow(*, zipapp: Path, work_dir: Path, data: dict[str, Any]) -> None:
         work_dir,
     )
     current = _assert_html_state(zipapp, html, work_dir)
+    _assert_task_present(current, added_id)
+
+    parent_id = added_id.split(".", 1)[0]
+    parent_auto_id = _new_child_id(current)
+    run_zipapp(
+        zipapp,
+        [
+            "task", "add", html.name, "--parent-id", parent_id,
+            "--name", "QA親指定自動採番タスク", "--assignee", "QA担当",
+            "--planned-start", project_end, "--planned-duration", "1", "--progress", "0",
+        ],
+        work_dir,
+    )
+    current = _assert_html_state(zipapp, html, work_dir)
+    _assert_task_present(current, parent_auto_id)
+
+    root_auto_id = _new_root_id(current)
+    run_zipapp(
+        zipapp,
+        [
+            "task", "add", html.name, "--name", "QA最上位自動採番タスク",
+            "--assignee", "QA担当", "--planned-start", project_end,
+            "--planned-duration", "1", "--progress", "0",
+        ],
+        work_dir,
+    )
+    current = _assert_html_state(zipapp, html, work_dir)
+    _assert_task_present(current, root_auto_id)
 
     delayed = next(task for task in _planned_leaf_tasks(current) if task["id"] != completed["id"])
     run_zipapp(

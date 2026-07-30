@@ -113,3 +113,26 @@ def test_manual_examples_validate_with_current_schema():
     ):
         result = wbsgen.build_project_model(json.loads(path.read_text(encoding="utf-8")))
         assert not result.validation.errors, result.validation.errors
+
+
+def test_manual_documents_browser_printing():
+    manual, _ = _manual_markup()
+    for text in (
+        "ブラウザの印刷", "PDFとして保存", "プロジェクト名",
+        "表示範囲", "基準日", "凡例", "標準", "分析",
+        "用紙サイズ", "縮小率", "背景の印刷",
+    ):
+        assert text in manual
+
+
+def test_manual_documents_task_add_auto_id_forms():
+    manual, _ = _manual_markup()
+
+    for text in (
+        "--id ID | --parent-id PARENT_ID",
+        "--parent-id",
+        "親未指定",
+        "最大番号",
+        "親タスクが存在しない",
+    ):
+        assert text in manual

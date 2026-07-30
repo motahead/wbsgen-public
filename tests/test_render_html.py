@@ -158,6 +158,29 @@ class TestRenderAssetTests:
         assert '$style' in html.read_text_asset('page.html')
         assert ':root' in html.read_text_asset('style.css')
 
+    def test_render_html_css_defines_print_layout(self):
+        from wbsgen.render import html
+        css = html.read_text_asset('style.css')
+        assert '@media print {' in css
+        print_block = css.split('@media print {', 1)[1]
+        for selector in (
+            '.search-drawer', '.app-tooltip', '.warning-window',
+            '.holiday-window', '.view-controls', '.wbs-view-control',
+            '.search-summary', '.warning-toggle', '.holiday-toggle',
+            '.resize-handle', '.interaction-layer',
+        ):
+            assert selector in print_block
+        assert '.topbar {' in print_block
+        assert '.workspace {' in print_block
+        assert '.left-head {' in print_block
+        assert 'break-inside: avoid-page;' in print_block
+        assert 'page-break-inside: avoid;' in print_block
+        assert '.chart-body {' not in print_block
+        assert '.chart-grid {' in print_block
+        assert 'background: none;' in print_block
+        assert '.print-grid {' in print_block
+        assert '.print-grid-line {' in print_block
+
     def test_render_html_css_defines_wbs_view_tabs_and_analysis_column_styles(self):
         from wbsgen import render
         css = render.html.read_text_asset('style.css')
@@ -540,6 +563,9 @@ class TestTestRenderGanttChartTests:
         assert 'class="right-head" style="width:160px;"' in html
         assert 'class="chart-body" style="width:160px;height:64px;"' in html
         assert 'class="chart-grid" style="width:160px;height:64px;"' in html
+        assert 'class="print-grid" width="160" height="64" viewBox="0 0 160 64"' in html
+        assert html.count('class="print-grid-line"') == 6
+        assert '<line class="print-grid-line" x1="160" y1="0" x2="160" y2="64" />' in html
         assert 'width="160" height="64" viewBox="0 0 160 64"' in html
         assert 'class="chart-grid"' in html
         assert 'data-date="2026-06-05"' in html
@@ -917,6 +943,35 @@ class TestRenderHtmlTests:
         assert state['chartHeight'] == '96px'
         assert state['highlightedTaskIds'] == []
         assert state['summary'] == '検索 1件'
+
+    def test_browser_filters_tasks_matching_all_terms_across_selected_fields(self):
+        data = {'project': {'name': '検索', 'statusDate': '2026-06-10'}, 'tasks': [{'id': '1', 'name': '親'}, {'id': '1.1', 'name': '設計', 'comment': 'レビュー対象', 'plannedStart': '2026-06-09', 'plannedDuration': 1}, {'id': '1.2', 'name': '設計だけ', 'plannedStart': '2026-06-09', 'plannedDuration': 1}]}
+        state = self.evaluate_search_state(data, query='?keyword=%E8%A8%AD%E8%A8%88%20%E3%83%AC%E3%83%93%E3%83%A5%E3%83%BC&fields=name,comment&mode=filter')
+        assert state['visibleTaskIds'] == ['1', '1.1']
+        assert state['visibleGanttTaskIds'] == ['1', '1.1']
+        assert state['summary'] == '検索 1件'
+
+    def test_browser_excludes_tasks_matching_exclusion_term(self):
+        data = {'project': {'name': '検索', 'statusDate': '2026-06-10'}, 'tasks': [{'id': '1', 'name': '親'}, {'id': '1.1', 'name': '設計レビュー', 'comment': '進行中', 'plannedStart': '2026-06-09', 'plannedDuration': 1}, {'id': '1.2', 'name': '設計レビュー', 'comment': '完了', 'plannedStart': '2026-06-09', 'plannedDuration': 1}]}
+        state = self.evaluate_search_state(data, query='?keyword=%E8%A8%AD%E8%A8%88%20-%E5%AE%8C%E4%BA%86&fields=name,comment&mode=highlight')
+        assert state['visibleTaskIds'] == ['1', '1.1', '1.2']
+        assert state['highlightedTaskIds'] == ['1.1']
+        assert state['ganttHighlightedTaskIds'] == ['1.1']
+        assert state['summary'] == '検索 1件'
+
+    def test_browser_filters_with_exclusion_terms_only(self):
+        data = {'project': {'name': '検索', 'statusDate': '2026-06-10'}, 'tasks': [{'id': '1', 'name': '親'}, {'id': '1.1', 'name': '進行中', 'plannedStart': '2026-06-09', 'plannedDuration': 1}, {'id': '1.2', 'name': '完了', 'plannedStart': '2026-06-09', 'plannedDuration': 1}]}
+        state = self.evaluate_search_state(data, query='?keyword=-完了&fields=name&mode=filter')
+        assert state['visibleTaskIds'] == ['1', '1.1']
+        assert state['visibleGanttTaskIds'] == ['1', '1.1']
+        assert state['summary'] == '検索 2件'
+
+    def test_browser_treats_dash_only_as_no_search_condition(self):
+        data = {'project': {'name': '検索', 'statusDate': '2026-06-10'}, 'tasks': [{'id': '1', 'name': '親'}, {'id': '1.1', 'name': '子', 'plannedStart': '2026-06-09', 'plannedDuration': 1}]}
+        state = self.evaluate_search_state(data, query='?keyword=-&fields=name&mode=filter')
+        assert state['visibleTaskIds'] == ['1', '1.1']
+        assert state['visibleGanttTaskIds'] == ['1', '1.1']
+        assert state['summary'] == '検索 0件'
 
     def test_browser_highlights_issue_with_or_without_hash_without_filtering(self):
         data = {'project': {'name': '検索', 'statusDate': '2026-06-10'}, 'tasks': [{'id': '1', 'name': '親'}, {'id': '1.1', 'name': '対象', 'issue': 138, 'plannedStart': '2026-06-09', 'plannedDuration': 1}, {'id': '1.2', 'name': '対象外', 'issue': 139, 'plannedStart': '2026-06-09', 'plannedDuration': 1}]}
@@ -1590,7 +1645,7 @@ class TestRenderHtmlTests:
         result = wbsgen.build_project_model(data, today=date(2026, 6, 10))
         rendered = wbsgen.render_html(data, result)
         css = __import__('wbsgen.render.html', fromlist=['read_text_asset']).read_text_asset('style.css')
-        for token in ('data-search-summary', 'data-search-drawer', 'data-search-keyword', 'data-search-field="all"', 'data-search-field="name"', 'data-search-field="comment"', 'data-search-field="assignee"', 'data-search-field="issue"', 'data-search-mode="filter"', 'data-search-mode="highlight"', 'data-search-name="子"', 'data-search-comment="確認対象"', 'data-search-assignee="担当者A"', 'data-search-issue="138"'):
+        for token in ('data-search-summary', 'data-search-drawer', 'data-search-keyword', 'placeholder="空白でAND、-で除外"', 'data-search-field="all"', 'data-search-field="name"', 'data-search-field="comment"', 'data-search-field="assignee"', 'data-search-field="issue"', 'data-search-mode="filter"', 'data-search-mode="highlight"', 'data-search-name="子"', 'data-search-comment="確認対象"', 'data-search-assignee="担当者A"', 'data-search-issue="138"'):
             with nullcontext():
                 assert token in rendered
         assert '.search-summary' in css
@@ -1629,7 +1684,7 @@ with sync_playwright() as playwright:
         }""")
         page.evaluate("""() => {
           const input = document.querySelector('[data-search-keyword]');
-          input.value = '確認'; input.dispatchEvent(new Event('input', {bubbles: true}));
+          input.value = '確認 担当者A -完了'; input.dispatchEvent(new Event('input', {bubbles: true}));
           ['comment', 'assignee'].forEach((field) => {
             const control = document.querySelector(`[data-search-field="${field}"]`);
             control.checked = false; control.dispatchEvent(new Event('change', {bubbles: true}));
@@ -1676,7 +1731,7 @@ with sync_playwright() as playwright:
         assert state['failureLabel'] == 'コピーできませんでした'
         assert state['copied'].endswith('#shared')
         assert 'ignored=1' not in state['copied']
-        assert 'keyword=%E7%A2%BA%E8%AA%8D' in state['copied']
+        assert 'keyword=%E7%A2%BA%E8%AA%8D+%E6%8B%85%E5%BD%93%E8%80%85A+-%E5%AE%8C%E4%BA%86' in state['copied']
         assert 'fields=name%2Cissue' in state['copied']
         assert 'mode=highlight' in state['copied']
         assert 'hideColumns=comment' in state['copied']

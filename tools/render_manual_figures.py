@@ -11,6 +11,7 @@ import sys
 
 
 MERMAID_CLI = "npm:@mermaid-js/mermaid-cli@11.12.0"
+FIGURE_GENERATED_AT = "2026-01-01 00:00"
 FIGURE_DIR = Path("docs/manual-figures")
 MANUAL_PATH = Path("MANUAL.html")
 MANIFEST_PATH = FIGURE_DIR / "manifest.json"
@@ -116,11 +117,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def generate_html(input_json: Path, output_html: Path) -> None:
-    subprocess.run(
-        [sys.executable, "-m", "wbsgen", "generate", str(input_json), "-o", str(output_html), "--overwrite"],
-        check=True,
-    )
-    html = output_html.read_text(encoding="utf-8")
+    from wbsgen import build_project_model, render_html
+    from wbsgen.source import with_generated_at
+
+    data = json.loads(input_json.read_text(encoding="utf-8"))
+    result = build_project_model(data)
+    if result.validation.has_errors:
+        raise ValueError("manual figure source JSON is invalid")
+    html = render_html(with_generated_at(data, FIGURE_GENERATED_AT), result)
     output_html.write_text(
         "\n".join(line.rstrip() for line in html.splitlines()) + "\n",
         encoding="utf-8",

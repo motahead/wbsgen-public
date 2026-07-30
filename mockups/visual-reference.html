@@ -991,6 +991,7 @@
       pointer-events: none;
       z-index: 2;
     }
+    .print-grid { display: none; }
     .chart-rows { z-index: 1; }
     .chart-overlay {
       pointer-events: none;
@@ -1385,6 +1386,68 @@
     }
     .warning-path { color: var(--muted); font-variant-numeric: tabular-nums; }
     .warning-task-id { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+    @media print {
+      body { background: #fff; }
+      .app {
+        height: auto;
+        min-height: 0;
+        overflow: visible;
+      }
+      .search-drawer,
+      .app-tooltip,
+      .warning-window,
+      .holiday-window,
+      .view-controls,
+      .wbs-view-control,
+      .search-summary,
+      .warning-toggle,
+      .holiday-toggle,
+      .resize-handle,
+      .interaction-layer,
+      .warning-checkbox,
+      .holiday-checkbox {
+        display: none !important;
+      }
+      .topbar {
+        background: #fff;
+        border-bottom: 1px solid var(--border);
+        min-height: 0;
+        padding: 6px 8px;
+      }
+      .workspace {
+        min-height: 0;
+        overflow: visible;
+        width: max-content;
+      }
+      .chart-grid { background: none; }
+      .print-grid {
+        display: block;
+        inset: 0;
+        pointer-events: none;
+        position: absolute;
+        z-index: 2;
+      }
+      .print-grid-line {
+        fill: none;
+        stroke: rgba(148, 163, 184, 0.32);
+        stroke-width: 1;
+      }
+      .left-pane {
+        position: static;
+      }
+      .left-head,
+      .right-head {
+        position: static;
+      }
+      .left-head {
+        position: relative;
+      }
+      .wbs-row,
+      .gantt-row {
+        break-inside: avoid-page;
+        page-break-inside: avoid;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1487,7 +1550,7 @@
     <section class="search-drawer" id="search-drawer" aria-label="検索・フィルタ条件">
       <div class="search-condition">
         <span class="search-condition-label">条件</span>
-        <input class="search-input" type="search" placeholder="キーワードを入力" aria-label="検索キーワード" data-search-keyword>
+        <input class="search-input" type="search" placeholder="空白でAND、-で除外" aria-label="検索キーワード" data-search-keyword>
       </div>
       <div>
         <div class="search-options" aria-label="検索対象">
@@ -1695,6 +1758,9 @@
             <div class="weekend-bg" data-date="2026-08-02" style="left:2016px;top:0px;width:32px;height:1280px;"></div>
           </div>
           <div class="chart-grid" style="width:2080px;height:1280px;"></div>
+          <svg class="print-grid" width="2080" height="1280" viewBox="0 0 2080 1280" aria-hidden="true">
+            <path class="print-grid-line" d="M0 0V1280 M32 0V1280 M64 0V1280 M96 0V1280 M128 0V1280 M160 0V1280 M192 0V1280 M224 0V1280 M256 0V1280 M288 0V1280 M320 0V1280 M352 0V1280 M384 0V1280 M416 0V1280 M448 0V1280 M480 0V1280 M512 0V1280 M544 0V1280 M576 0V1280 M608 0V1280 M640 0V1280 M672 0V1280 M704 0V1280 M736 0V1280 M768 0V1280 M800 0V1280 M832 0V1280 M864 0V1280 M896 0V1280 M928 0V1280 M960 0V1280 M992 0V1280 M1024 0V1280 M1056 0V1280 M1088 0V1280 M1120 0V1280 M1152 0V1280 M1184 0V1280 M1216 0V1280 M1248 0V1280 M1280 0V1280 M1312 0V1280 M1344 0V1280 M1376 0V1280 M1408 0V1280 M1440 0V1280 M1472 0V1280 M1504 0V1280 M1536 0V1280 M1568 0V1280 M1600 0V1280 M1632 0V1280 M1664 0V1280 M1696 0V1280 M1728 0V1280 M1760 0V1280 M1792 0V1280 M1824 0V1280 M1856 0V1280 M1888 0V1280 M1920 0V1280 M1952 0V1280 M1984 0V1280 M2016 0V1280 M2048 0V1280 M2080 0V1280" />
+          </svg>
           <div class="chart-rows">
           <div class="gantt-row project is-search-match" data-task-id="1" data-depth="0" data-has-children="true" data-status-x="352" data-row-height="32" data-progress-x="358" data-progress-y="16">
             <div class="status-date-bg" data-status-date="2026-06-10" style="left:320px;top:0px;width:32px;height:32px;"></div>

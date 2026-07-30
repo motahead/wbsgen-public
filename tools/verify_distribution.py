@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import shutil
 import sys
@@ -33,18 +34,38 @@ def command_markers(html_name: Path) -> list[list[str]]:
         ["init", "initial.json", "--name", "初期化確認"],
         ["template", "template.json"],
         ["project", "show", html],
-        ["task", "move", html, "--id", "2.2", "--to", "2.3"],
+        ["task", "show", html, "--id", "1.2", "--direct"],
+        ["task", "show", html, "--id", "1.2", "--complement"],
+        ["task", "add", html, "--id", "1.3", "--name", "明示IDタスク", "--assignee", "担当者F", "--planned-start", "2026-08-24", "--planned-duration", "1"],
+        ["task", "add", html, "--parent-id", "2", "--name", "一時タスク", "--assignee", "担当者D", "--planned-start", "2026-08-24", "--planned-duration", "1"],
+        ["task", "add", html, "--name", "トップレベルタスク", "--assignee", "担当者E", "--planned-start", "2026-08-25", "--planned-duration", "1"],
+        ["task", "update", html, "--id", "1.2", "--comment", "下書き", "--dry-run"],
+        ["task", "update", html, "--id", "1.2", "--clear", "comment"],
+        ["task", "move", html, "--id", "2.2", "--to", "2.4"],
         ["milestone", "show", html],
         ["holiday", "show", html],
         ["holiday", "merge", html, "--from", "distribution-holidays.json"],
         ["holiday", "import-gov", html, "--csv", "gov-holidays.csv"],
         ["display", "show", html],
         ["export", "xlsx", html, "-o", "workflow.xlsx", "--overwrite"],
+        ["export", "md", html, "-o", "workflow-alias.md", "--overwrite"],
+        ["export", "markdown", html, "-o", "workflow.md", "--overwrite"],
+        ["export", "csv", html, "-o", "workflow.csv", "--overwrite"],
     ]
 
 
 def _read_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _assert_clean_validation(zipapp: Path, input_name: str, work_dir: Path) -> None:
+    completed = run_zipapp(zipapp, ["validate", input_name, "--json"], work_dir)
+    report = json.loads(completed.stdout)
+    for key in ("errorCount", "warningCount"):
+        if report.get(key) != 0:
+            raise AssertionError(
+                f"{input_name} validate report has {key}={report.get(key)!r}"
+            )
 
 
 def _export_source(zipapp: Path, html: Path, output: Path, cwd: Path) -> dict[str, Any]:
@@ -72,20 +93,26 @@ def _assert_show_contains(
         )
 
 
+def _show_json(zipapp: Path, args: list[str], cwd: Path) -> dict[str, Any]:
+    return json.loads(run_zipapp(zipapp, args, cwd).stdout)
+
+
 def _run_sample_contract(zipapp: Path, work_dir: Path) -> None:
     sample_json = work_dir / "sample.json"
     sample_html = work_dir / "sample.html"
     sample_export = work_dir / "sample-export.json"
     sample_xlsx = work_dir / "sample.xlsx"
+    sample_markdown = work_dir / "sample.md"
+    sample_csv = work_dir / "sample.csv"
     shutil.copy2(SAMPLE_JSON, sample_json)
     original = _read_json(sample_json)
-    run_zipapp(zipapp, ["validate", sample_json.name, "--json"], work_dir)
+    _assert_clean_validation(zipapp, sample_json.name, work_dir)
     run_zipapp(
         zipapp,
         ["generate", sample_json.name, "-o", sample_html.name, "--overwrite"],
         work_dir,
     )
-    run_zipapp(zipapp, ["validate", sample_html.name, "--json"], work_dir)
+    _assert_clean_validation(zipapp, sample_html.name, work_dir)
     exported = _export_source(zipapp, sample_html, sample_export, work_dir)
     assert_source_equal(original, exported)
     assert_dom_matches_source(exported, capture_dom_state(sample_html))
@@ -99,6 +126,14 @@ def _run_sample_contract(zipapp: Path, work_dir: Path) -> None:
         project_name=original["project"]["name"],
         expected_wbs_rows=len(original["tasks"]),
     )
+    run_zipapp(zipapp, ["export", "markdown", sample_html.name, "-o", sample_markdown.name, "--overwrite"], work_dir)
+    run_zipapp(zipapp, ["export", "csv", sample_json.name, "-o", sample_csv.name, "--overwrite", "--encoding", "utf-8-sig"], work_dir)
+    if "| ID | タスク名 |" not in sample_markdown.read_text(encoding="utf-8"):
+        raise AssertionError("markdown export did not contain the WBS header")
+    if not sample_csv.read_bytes().startswith(b"\xef\xbb\xbf"):
+        raise AssertionError("CSV export did not include the requested UTF-8 BOM")
+    if next(csv.reader(sample_csv.read_text(encoding="utf-8-sig").splitlines()))[0] != "ID":
+        raise AssertionError("CSV export did not contain the WBS header")
 
 
 def _run_contract(zipapp: Path, work_dir: Path) -> None:
@@ -154,22 +189,43 @@ def _run_contract(zipapp: Path, work_dir: Path) -> None:
         raise AssertionError("project update was not persisted")
 
     _assert_show_contains(zipapp, ["task", "show", html.name, "--id", "1.2"], work_dir, "設計レビュー")
-    run_zipapp(
-        zipapp,
-        ["task", "add", html.name, "--id", "2.4", "--name", "一時タスク", "--assignee", "担当者D", "--planned-start", "2026-08-24", "--planned-duration", "1", "--progress", "0"],
-        work_dir,
-    )
-    if not any(task["id"] == "2.4" for task in _assert_html_state(zipapp, html, work_dir)["tasks"]):
-        raise AssertionError("task add was not persisted")
+    direct = _show_json(zipapp, ["task", "show", html.name, "--id", "1.2", "--direct"], work_dir)
+    if direct["scope"] != "direct" or [task["id"] for task in direct["parents"]] != ["1"] or direct["task"]["id"] != "1.2" or direct["children"]:
+        raise AssertionError("task show --direct returned an unexpected hierarchy")
+    complement = _show_json(zipapp, ["task", "show", html.name, "--id", "1.2", "--complement"], work_dir)
+    if complement["task"].get("plannedEnd") != "2026-08-11":
+        raise AssertionError("task show --complement did not return the computed planned end")
+    run_zipapp(zipapp, ["task", "add", html.name, "--id", "1.3", "--name", "明示IDタスク", "--assignee", "担当者F", "--planned-start", "2026-08-24", "--planned-duration", "1"], work_dir)
+    if not any(task["id"] == "1.3" for task in _assert_html_state(zipapp, html, work_dir)["tasks"]):
+        raise AssertionError("task add --id was not persisted")
+    run_zipapp(zipapp, ["task", "add", html.name, "--parent-id", "2", "--name", "一時タスク", "--assignee", "担当者D", "--planned-start", "2026-08-24", "--planned-duration", "1"], work_dir)
+    if not any(task["id"] == "2.3" for task in _assert_html_state(zipapp, html, work_dir)["tasks"]):
+        raise AssertionError("task add --parent-id was not persisted")
+    run_zipapp(zipapp, ["task", "add", html.name, "--name", "トップレベルタスク", "--assignee", "担当者E", "--planned-start", "2026-08-25", "--planned-duration", "1"], work_dir)
+    if not any(task["id"] == "3" for task in _assert_html_state(zipapp, html, work_dir)["tasks"]):
+        raise AssertionError("top-level task add was not persisted")
     run_zipapp(zipapp, ["task", "update", html.name, "--id", "1.2", "--comment", "更新済み"], work_dir)
     if next(task for task in _assert_html_state(zipapp, html, work_dir)["tasks"] if task["id"] == "1.2")["comment"] != "更新済み":
         raise AssertionError("task update was not persisted")
-    run_zipapp(zipapp, ["task", "move", html.name, "--id", "2.2", "--to", "2.3"], work_dir)
-    if not any(task["id"] == "2.3" for task in _assert_html_state(zipapp, html, work_dir)["tasks"]):
+    before_dry_run = html.read_bytes()
+    dry_run = run_zipapp(zipapp, ["task", "update", html.name, "--id", "1.2", "--comment", "下書き", "--dry-run"], work_dir)
+    if html.read_bytes() != before_dry_run or '"comment": "下書き"' not in dry_run.stdout:
+        raise AssertionError("task update --dry-run modified HTML or omitted its diff")
+    run_zipapp(zipapp, ["task", "update", html.name, "--id", "1.2", "--clear", "comment"], work_dir)
+    if "comment" in next(task for task in _assert_html_state(zipapp, html, work_dir)["tasks"] if task["id"] == "1.2"):
+        raise AssertionError("task update --clear did not remove the field")
+    run_zipapp(zipapp, ["task", "move", html.name, "--id", "2.2", "--to", "2.4"], work_dir)
+    if not any(task["id"] == "2.4" for task in _assert_html_state(zipapp, html, work_dir)["tasks"]):
         raise AssertionError("task move was not persisted")
-    run_zipapp(zipapp, ["task", "remove", html.name, "--id", "2.4"], work_dir)
-    if any(task["id"] == "2.4" for task in _assert_html_state(zipapp, html, work_dir)["tasks"]):
-        raise AssertionError("task remove was not persisted")
+    run_zipapp(zipapp, ["task", "remove", html.name, "--id", "2.3"], work_dir)
+    if any(task["id"] == "2.3" for task in _assert_html_state(zipapp, html, work_dir)["tasks"]):
+        raise AssertionError("child task remove was not persisted")
+    run_zipapp(zipapp, ["task", "remove", html.name, "--id", "1.3"], work_dir)
+    if any(task["id"] == "1.3" for task in _assert_html_state(zipapp, html, work_dir)["tasks"]):
+        raise AssertionError("explicit-ID task remove was not persisted")
+    run_zipapp(zipapp, ["task", "remove", html.name, "--id", "3"], work_dir)
+    if any(task["id"] == "3" for task in _assert_html_state(zipapp, html, work_dir)["tasks"]):
+        raise AssertionError("top-level task remove was not persisted")
 
     _assert_show_contains(zipapp, ["milestone", "show", html.name], work_dir, "設計完了")
     run_zipapp(zipapp, ["milestone", "add", html.name, "--date", "2026-08-24", "--name", "一時節目"], work_dir)
@@ -221,6 +277,10 @@ def _run_contract(zipapp: Path, work_dir: Path) -> None:
         project_name=final_after_refresh["project"]["name"],
         expected_wbs_rows=len(final_after_refresh["tasks"]),
     )
+    alias_markdown = work_dir / "workflow-alias.md"
+    run_zipapp(zipapp, ["export", "md", html.name, "-o", alias_markdown.name, "--overwrite"], work_dir)
+    if "| ID | タスク名 |" not in alias_markdown.read_text(encoding="utf-8"):
+        raise AssertionError("markdown alias export did not contain the WBS header")
 
 
 def run(zipapp: Path, work_dir: Path) -> None:

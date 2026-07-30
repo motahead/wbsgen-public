@@ -1,4 +1,5 @@
 from contextlib import nullcontext
+import csv
 import pytest
 import io
 import importlib.util
@@ -138,6 +139,266 @@ class TestV2ParserContractTests:
         with pytest.raises(SystemExit) as context:
             wbsgen.parse_args(['display', 'update', 'standard', 'project.html', '--width', 'name=abc'])
         assert context.value.code == 2
+
+    def test_task_show_accepts_complement_flag(self):
+        args = wbsgen.parse_args(['task', 'show', 'project.html', '--id', '1', '--complement'])
+        assert args.complement is True
+
+    def test_task_show_rejects_old_include_generated_flag_name(self):
+        with pytest.raises(SystemExit) as context:
+            wbsgen.parse_args(['task', 'show', 'project.html', '--id', '1', '--include-generated'])
+        assert context.value.code == 2
+
+    def test_task_add_help_documents_wbs_id_format_and_examples(self):
+        stdout = io.StringIO()
+        with redirect_stdout(stdout), pytest.raises(SystemExit) as context:
+            wbsgen.parse_args(['task', 'add', '--help'])
+        assert context.value.code == 0
+        help_text = stdout.getvalue()
+        assert 'Dot-separated positive integers; no leading zeros.' in help_text
+        assert 'EXAMPLES:' in help_text
+        assert 'wbsgen task add project.html --id 2.1' in help_text
+
+    def test_task_add_accepts_auto_id_forms_and_rejects_id_parent_conflicts(self):
+        explicit = wbsgen.parse_args(['task', 'add', 'project.html', '--id', '1', '--name', 'T'])
+        child = wbsgen.parse_args(['task', 'add', 'project.html', '--parent-id', '1', '--name', 'T'])
+        root = wbsgen.parse_args(['task', 'add', 'project.html', '--name', 'T'])
+
+        assert (explicit.id, explicit.parent_id) == ('1', None)
+        assert (child.id, child.parent_id) == (None, '1')
+        assert (root.id, root.parent_id) == (None, None)
+        with pytest.raises(SystemExit) as context:
+            wbsgen.parse_args(['task', 'add', 'project.html', '--id', '1', '--parent-id', '1', '--name', 'T'])
+        assert context.value.code == 2
+
+    def test_task_add_help_documents_auto_id_examples_and_exclusivity(self):
+        stdout = io.StringIO()
+        with redirect_stdout(stdout), pytest.raises(SystemExit) as context:
+            wbsgen.parse_args(['task', 'add', '--help'])
+        assert context.value.code == 0
+        help_text = stdout.getvalue()
+
+        assert '--parent-id' in help_text
+        assert 'wbsgen task add project.html --parent-id 2' in help_text
+        assert 'wbsgen task add project.html --name "Release"' in help_text
+        assert 'cannot be used with --id' in help_text.lower()
+
+    def test_task_move_help_documents_destination_id_and_examples(self):
+        stdout = io.StringIO()
+        with redirect_stdout(stdout), pytest.raises(SystemExit) as context:
+            wbsgen.parse_args(['task', 'move', '--help'])
+        assert context.value.code == 0
+        help_text = stdout.getvalue()
+        assert 'Destination WBS ID' in help_text
+        assert 'wbsgen task move project.html --id 2.1 --to 3.1' in help_text
+
+    def test_task_show_help_documents_complement_examples(self):
+        stdout = io.StringIO()
+        with redirect_stdout(stdout), pytest.raises(SystemExit) as context:
+            wbsgen.parse_args(['task', 'show', '--help'])
+        assert context.value.code == 0
+        help_text = stdout.getvalue()
+        assert 'wbsgen task show project.html --id 2.1 --complement' in help_text
+
+    def test_generate_refresh_validate_version_help_document_arguments_and_examples(self):
+        for argv, expected_snippets in (
+            (
+                ['generate', '--help'],
+                ['Input project JSON file.', 'Output HTML file to write.', 'EXAMPLES:', 'wbsgen generate project.json -o project.html'],
+            ),
+            (
+                ['refresh', '--help'],
+                ['HTML source-of-truth file to regenerate in place.', 'EXAMPLES:', 'wbsgen refresh project.html'],
+            ),
+            (
+                ['validate', '--help'],
+                ['JSON or WBS-GEN HTML file to validate.', 'EXAMPLES:', 'wbsgen validate project.html'],
+            ),
+            (
+                ['version', '--help'],
+                ['Omit to print the CLI version only.', 'EXAMPLES:', 'wbsgen version\n', 'wbsgen version project.html'],
+            ),
+        ):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout), pytest.raises(SystemExit) as context:
+                wbsgen.parse_args(argv)
+            assert context.value.code == 0
+            help_text = stdout.getvalue()
+            for snippet in expected_snippets:
+                assert snippet in help_text, f"{argv}: missing {snippet!r}"
+
+    def test_task_remaining_arguments_document_input_html_clear_direct_recursive(self):
+        for argv, expected_snippets in (
+            (
+                ['task', 'show', '--help'],
+                ['HTML source-of-truth file to read or update.', 'Limit parents/children to the direct parent'],
+            ),
+            (
+                ['task', 'update', '--help'],
+                ['Clear one or more optional task fields', '--clear assignee comment'],
+            ),
+            (
+                ['task', 'remove', '--help'],
+                ['Also remove all descendant tasks.', 'Required when the task has children.'],
+            ),
+        ):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout), pytest.raises(SystemExit) as context:
+                wbsgen.parse_args(argv)
+            assert context.value.code == 0
+            help_text = stdout.getvalue()
+            for snippet in expected_snippets:
+                assert snippet in help_text, f"{argv}: missing {snippet!r}"
+
+    def test_export_help_documents_arguments_and_examples(self):
+        for argv, expected_snippets in (
+            (
+                ['export', 'json', '--help'],
+                ['Omit to print to stdout.', 'Requires -o/--output.', 'EXAMPLES:', 'wbsgen export json project.html -o project.json'],
+            ),
+            (
+                ['export', 'xlsx', '--help'],
+                ['Higher values shrink mark text', 'default: 1', 'EXAMPLES:', 'wbsgen export xlsx project.html -o report.xlsx'],
+            ),
+        ):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout), pytest.raises(SystemExit) as context:
+                wbsgen.parse_args(argv)
+            assert context.value.code == 0
+            help_text = stdout.getvalue()
+            for snippet in expected_snippets:
+                assert snippet in help_text, f"{argv}: missing {snippet!r}"
+
+    def test_project_help_documents_arguments_and_examples(self):
+        for argv, expected_snippets in (
+            (
+                ['project', 'show', '--help'],
+                ['HTML source-of-truth file to read.', 'EXAMPLES:', 'wbsgen project show project.html'],
+            ),
+            (
+                ['project', 'update', '--help'],
+                [
+                    'Clear one or more optional project fields',
+                    '--clear end-date issue-base-url',
+                    'EXAMPLES:',
+                    'wbsgen project update project.html --status-date 2026-08-01',
+                ],
+            ),
+        ):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout), pytest.raises(SystemExit) as context:
+                wbsgen.parse_args(argv)
+            assert context.value.code == 0
+            help_text = stdout.getvalue()
+            for snippet in expected_snippets:
+                assert snippet in help_text, f"{argv}: missing {snippet!r}"
+
+    def test_milestone_help_documents_arguments_and_examples(self):
+        for argv, expected_snippets in (
+            (
+                ['milestone', 'add', '--help'],
+                ['Milestone date (YYYY-MM-DD).', 'Milestone name.', 'EXAMPLES:', 'wbsgen milestone add project.html --date 2026-08-10 --name "Release review"'],
+            ),
+            (
+                ['milestone', 'update', '--help'],
+                ['Existing milestone name to update.', 'At least one of --new-date or --new-name is required.', 'EXAMPLES:'],
+            ),
+            (
+                ['milestone', 'show', '--help'],
+                ['HTML source-of-truth file to read.', 'EXAMPLES:', 'wbsgen milestone show project.html'],
+            ),
+            (
+                ['milestone', 'remove', '--help'],
+                ['Milestone name to remove.', 'disambiguate when multiple milestones share the same name', 'EXAMPLES:'],
+            ),
+        ):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout), pytest.raises(SystemExit) as context:
+                wbsgen.parse_args(argv)
+            assert context.value.code == 0
+            help_text = stdout.getvalue()
+            for snippet in expected_snippets:
+                assert snippet in help_text, f"{argv}: missing {snippet!r}"
+
+    def test_holiday_help_documents_arguments_and_examples(self):
+        for argv, expected_snippets in (
+            (
+                ['holiday', 'add', '--help'],
+                ['Holiday date (YYYY-MM-DD).', 'EXAMPLES:', 'wbsgen holiday add project.html --date 2026-08-11 --name "Mountain Day"'],
+            ),
+            (
+                ['holiday', 'update', '--help'],
+                ['Existing holiday date (YYYY-MM-DD) to update.', 'At least one of --name, --clear, or --new-date is required.', 'EXAMPLES:'],
+            ),
+            (
+                ['holiday', 'show', '--help'],
+                ['HTML source-of-truth file to read.', 'EXAMPLES:'],
+            ),
+            (
+                ['holiday', 'remove', '--help'],
+                ['Holiday date (YYYY-MM-DD) to remove.', 'EXAMPLES:'],
+            ),
+            (
+                ['holiday', 'merge', '--help'],
+                ['External JSON file with a top-level holidays array', 'EXAMPLES:', 'wbsgen holiday merge project.html --from holidays.json'],
+            ),
+            (
+                ['holiday', 'import-gov', '--help'],
+                ['Uses no network access.', 'EXAMPLES:', 'wbsgen holiday import-gov project.html --csv holidays.csv'],
+            ),
+        ):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout), pytest.raises(SystemExit) as context:
+                wbsgen.parse_args(argv)
+            assert context.value.code == 0
+            help_text = stdout.getvalue()
+            for snippet in expected_snippets:
+                assert snippet in help_text, f"{argv}: missing {snippet!r}"
+
+    def test_display_help_documents_arguments_and_examples(self):
+        for argv, expected_snippets in (
+            (
+                ['display', 'show', '--help'],
+                ['HTML source-of-truth file to read.', 'EXAMPLES:', 'wbsgen display show project.html'],
+            ),
+            (
+                ['display', 'update', 'standard', '--help'],
+                [
+                    'keys: planned, actual, progress, expected, issue, comment, assignee',
+                    "must be combined with '*'/'all'",
+                    'keys: name, assignee, comment',
+                    'value >= 40',
+                    'keys: assignee, planned-period, actual-period, progress, expected-progress, issue',
+                    'Repeat the flag to clear several',
+                    'EXAMPLES:',
+                    'wbsgen display update standard project.html --visible all,-comment',
+                ],
+            ),
+            (
+                ['display', 'update', 'analysis', '--help'],
+                [
+                    'keys: assignee, progress, expected-progress, delta, delay, pace',
+                    'EXAMPLES:',
+                    'wbsgen display update analysis project.html --order assignee,delta',
+                ],
+            ),
+            (
+                ['display', 'update', 'layers', '--help'],
+                [
+                    'keys: inazuma, actual, highlight, tooltip, delayHighlight, milestone',
+                    "must be combined with '*'/'all'",
+                    'EXAMPLES:',
+                    'wbsgen display update layers project.html --visible all,-tooltip',
+                ],
+            ),
+        ):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout), pytest.raises(SystemExit) as context:
+                wbsgen.parse_args(argv)
+            assert context.value.code == 0
+            help_text = stdout.getvalue()
+            for snippet in expected_snippets:
+                assert snippet in help_text, f"{argv}: missing {snippet!r}"
 
     def test_version_option_exits_before_a_subcommand_is_required(self):
         stdout = io.StringIO()
@@ -384,6 +645,34 @@ class TestV2HtmlMutationCommandTests:
             assert wbsgen.main(['task', 'update', str(html), '--id', '1', '--clear', 'assignee']) == 0
             assert 'assignee' not in load_source(html).data['tasks'][0]
 
+    def test_task_add_auto_assigns_child_and_top_level_ids_without_writing_on_error_or_dry_run(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'project.json'
+            html = root / 'project.html'
+            source.write_text(json.dumps({
+                'project': {'name': 'P'},
+                'tasks': [
+                    {'id': '1', 'name': '親'},
+                    {'id': '1.1', 'name': '子1'},
+                    {'id': '1.2', 'name': '子2'},
+                    {'id': '3', 'name': '既存トップレベル'},
+                ],
+            }), encoding='utf-8')
+            assert wbsgen.main(['generate', str(source), '-o', str(html)]) == 0
+
+            assert wbsgen.main(['task', 'add', str(html), '--parent-id', '1', '--name', '子3']) == 0
+            assert [task['id'] for task in load_source(html).data['tasks']] == ['1', '1.1', '1.2', '3', '1.3']
+            assert wbsgen.main(['task', 'add', str(html), '--name', '新規トップレベル']) == 0
+            assert load_source(html).data['tasks'][-1]['id'] == '4'
+
+            before = html.read_bytes()
+            assert wbsgen.main(['task', 'add', str(html), '--parent-id', '9', '--name', '失敗']) == 1
+            assert html.read_bytes() == before
+            assert wbsgen.main(['task', 'add', str(html), '--name', '下書き', '--dry-run']) == 0
+            assert html.read_bytes() == before
+
+
 class TestInitCommandTests:
 
     def test_main_init_writes_default_project_template_as_utf8_json(self):
@@ -490,3 +779,27 @@ class TestTemplateCommandTests:
         with pytest.raises(SystemExit) as context:
             wbsgen.parse_args(['template', 'output.json', '--name', 'Webサイト刷新'])
         assert context.value.code == 2
+
+
+class TestTabularExportCommands:
+
+    def test_markdown_and_csv_export_accept_json_html_and_stdout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "project.json"
+            html = Path(directory) / "project.html"
+            source.write_text(json.dumps({"project": {"name": "P", "startDate": "2026-07-01", "endDate": "2026-07-31", "statusDate": "2026-07-10"}, "tasks": []}), encoding="utf-8")
+            assert wbsgen.main(["generate", str(source), "-o", str(html)]) == 0
+            markdown = io.StringIO()
+            with redirect_stdout(markdown):
+                assert wbsgen.main(["export", "md", str(html)]) == 0
+            assert "| ID | タスク名 |" in markdown.getvalue()
+            output = Path(directory) / "report.csv"
+            assert wbsgen.main(["export", "csv", str(source), "-o", str(output), "--encoding", "utf-8-sig"]) == 0
+            assert output.read_bytes().startswith(b"\xef\xbb\xbf")
+            assert next(csv.reader(output.read_text(encoding="utf-8-sig").splitlines()))[0] == "ID"
+
+    def test_csv_accepts_sjis_alias_and_markdown_rejects_encoding(self):
+        args = wbsgen.parse_args(["export", "csv", "project.json", "--encoding", "sjis"])
+        assert args.encoding == "sjis"
+        with pytest.raises(SystemExit):
+            wbsgen.parse_args(["export", "markdown", "project.json", "--encoding", "utf-8"])
