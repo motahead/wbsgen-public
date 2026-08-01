@@ -927,7 +927,7 @@ class TestRenderHtmlTests:
         with tempfile.TemporaryDirectory() as tmp:
             html_path = Path(tmp) / 'search-state.html'
             html_path.write_text(wbsgen.render_html(data, result), encoding='utf-8')
-            runner = '\nimport json, sys\nfrom pathlib import Path\nfrom playwright.sync_api import sync_playwright\nhtml_path = Path(sys.argv[1]).resolve()\nquery = sys.argv[2]\nwith sync_playwright() as p:\n    browser = p.chromium.launch(headless=True, args=[\'--disable-gpu\', \'--disable-dev-shm-usage\'])\n    try:\n        page = browser.new_page(viewport={\'width\': 1360, \'height\': 900}, device_scale_factor=1)\n        page.goto(f\'{html_path.as_uri()}{query}\')\n        page.wait_for_timeout(150)\n        print(json.dumps(page.evaluate("""() => ({\n          summary: document.querySelector(\'[data-search-summary]\')?.textContent,\n          visibleTaskIds: Array.from(document.querySelectorAll(\'.wbs-row[data-task-id]\')).filter((row) => getComputedStyle(row).display !== \'none\').map((row) => row.dataset.taskId),\n          visibleGanttTaskIds: Array.from(document.querySelectorAll(\'.gantt-row[data-task-id]\')).filter((row) => getComputedStyle(row).display !== \'none\').map((row) => row.dataset.taskId),\n          chartHeight: document.querySelector(\'.chart-body\')?.style.height,\n          highlightedTaskIds: Array.from(document.querySelectorAll(\'.wbs-row.is-search-match\')).map((row) => row.dataset.taskId),\n          ganttHighlightedTaskIds: Array.from(document.querySelectorAll(\'.gantt-row.is-search-match\')).map((row) => row.dataset.taskId),\n        })""")))\n    finally:\n        browser.close()\n'
+            runner = '\nimport json, sys\nfrom pathlib import Path\nfrom playwright.sync_api import sync_playwright\nhtml_path = Path(sys.argv[1]).resolve()\nquery = sys.argv[2]\nwith sync_playwright() as p:\n    browser = p.chromium.launch(headless=True, args=[\'--disable-gpu\', \'--disable-dev-shm-usage\'])\n    try:\n        page = browser.new_page(viewport={\'width\': 1360, \'height\': 900}, device_scale_factor=1)\n        page.goto(f\'{html_path.as_uri()}{query}\')\n        page.wait_for_timeout(150)\n        print(json.dumps(page.evaluate("""() => ({\n          summary: document.querySelector(\'[data-search-summary]\')?.textContent,\n          visibleTaskIds: Array.from(document.querySelectorAll(\'.wbs-row[data-task-id]\')).filter((row) => getComputedStyle(row).display !== \'none\').map((row) => row.dataset.taskId),\n          visibleGanttTaskIds: Array.from(document.querySelectorAll(\'.gantt-row[data-task-id]\')).filter((row) => getComputedStyle(row).display !== \'none\').map((row) => row.dataset.taskId),\n          chartHeight: document.querySelector(\'.chart-body\')?.style.height,\n          highlightedTaskIds: Array.from(document.querySelectorAll(\'.wbs-row.is-search-match\')).map((row) => row.dataset.taskId),\n          ganttHighlightedTaskIds: Array.from(document.querySelectorAll(\'.gantt-row.is-search-match\')).map((row) => row.dataset.taskId),\n          ganttSearchBackgroundImages: Object.fromEntries(Array.from(document.querySelectorAll(\'.gantt-row[data-task-id]\')).map((row) => [row.dataset.taskId, getComputedStyle(row).backgroundImage])),\n        })""")))\n    finally:\n        browser.close()\n'
             proc = subprocess.run([str(browser_python), '-c', runner, str(html_path), query], capture_output=True, text=True, env={**os.environ, 'PLAYWRIGHT_BROWSERS_PATH': '.cache/ms-playwright'})
             if proc.returncode != 0:
                 if 'bootstrap_check_in' in proc.stderr or 'Permission denied' in proc.stderr:
@@ -957,6 +957,15 @@ class TestRenderHtmlTests:
         assert state['visibleTaskIds'] == ['1', '1.1', '1.2']
         assert state['highlightedTaskIds'] == ['1.1']
         assert state['ganttHighlightedTaskIds'] == ['1.1']
+        assert state['summary'] == '検索 1件'
+
+    def test_browser_highlights_a_directly_matching_parent_in_both_panes(self):
+        data = {'project': {'name': '検索', 'statusDate': '2026-06-10'}, 'tasks': [{'id': '1', 'name': '親の検索対象'}, {'id': '1.1', 'name': '子タスク', 'plannedStart': '2026-06-09', 'plannedDuration': 1}]}
+        state = self.evaluate_search_state(data, query='?keyword=%E8%A6%AA%E3%81%AE%E6%A4%9C%E7%B4%A2%E5%AF%BE%E8%B1%A1&fields=name&mode=highlight')
+        assert state['highlightedTaskIds'] == ['1']
+        assert state['ganttHighlightedTaskIds'] == ['1']
+        assert state['ganttSearchBackgroundImages']['1'] != 'none'
+        assert state['ganttSearchBackgroundImages']['1.1'] == 'none'
         assert state['summary'] == '検索 1件'
 
     def test_browser_filters_with_exclusion_terms_only(self):

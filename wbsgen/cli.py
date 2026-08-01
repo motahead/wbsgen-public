@@ -760,28 +760,22 @@ def _finalize_html_update(
     return 0
 
 
-def run_html_command(args: argparse.Namespace) -> int:
-    """Run a v2 HTML show or update command through one source boundary."""
+def _show_html_payload(args: argparse.Namespace, data: dict[str, object]) -> object:
+    if args.command == "project":
+        return show_project(data)
+    if args.command == "task":
+        return show_task(data, args.id, direct=args.direct, complement=args.complement)
+    if args.command == "milestone":
+        return show_milestones(data)
+    if args.command == "holiday":
+        return show_holidays(data)
+    return show_display(data)
 
-    source = _load_source_or_error(
-        args.input_html, allowed=frozenset({SourceFormat.HTML})
-    )
-    data = source.data
+
+def _build_html_update_candidate(
+    args: argparse.Namespace, data: dict[str, object]
+) -> dict[str, object] | None:
     subcommand = getattr(args, f"{args.command}_command")
-    if subcommand == "show":
-        if args.command == "project":
-            payload = show_project(data)
-        elif args.command == "task":
-            payload = show_task(data, args.id, direct=args.direct, complement=args.complement)
-        elif args.command == "milestone":
-            payload = show_milestones(data)
-        elif args.command == "holiday":
-            payload = show_holidays(data)
-        else:
-            payload = show_display(data)
-        print(json.dumps(payload, ensure_ascii=False, indent=2))
-        return 0
-
     clear_fields = _clear_fields(args)
     if args.command == "project":
         candidate, _ = update_project(data, selected_update_values(args), clear_fields)
@@ -817,7 +811,7 @@ def run_html_command(args: argparse.Namespace) -> int:
             result = build_project_model(data)
             if result.validation.has_errors:
                 _print_validation(result, as_json=False)
-                return 1
+                return None
             if result.display_start_date is None or result.display_end_date is None:
                 raise ValueError("cannot determine display range for holiday import")
             filtered = [
@@ -834,6 +828,22 @@ def run_html_command(args: argparse.Namespace) -> int:
             candidate, _ = update_display_analysis(data, values, clear_fields)
         else:
             candidate, _ = update_display_layers(data, values, clear_fields)
+    return candidate
+
+
+def run_html_command(args: argparse.Namespace) -> int:
+    """Run a v2 HTML show or update command through one source boundary."""
+
+    source = _load_source_or_error(
+        args.input_html, allowed=frozenset({SourceFormat.HTML})
+    )
+    data = source.data
+    if getattr(args, f"{args.command}_command") == "show":
+        print(json.dumps(_show_html_payload(args, data), ensure_ascii=False, indent=2))
+        return 0
+    candidate = _build_html_update_candidate(args, data)
+    if candidate is None:
+        return 1
     return _finalize_html_update(args, data, candidate)
 
 

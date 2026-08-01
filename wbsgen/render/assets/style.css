@@ -1033,15 +1033,15 @@
       background-image: linear-gradient(var(--pinned-row), var(--pinned-row));
       box-shadow: inset 0 0 0 1px var(--pinned-line);
     }
+    .gantt-row.project { background: var(--project); }
+    .gantt-row.parent-2 { background: var(--parent-2); }
+    .gantt-row.done { background: #e5e9ef; }
     .gantt-row.is-search-match {
       background-image: linear-gradient(var(--hover-row), var(--hover-row));
     }
     .gantt-row.is-search-match.is-pinned-task {
       background-image: linear-gradient(var(--pinned-row), var(--pinned-row));
     }
-    .gantt-row.project { background: var(--project); }
-    .gantt-row.parent-2 { background: var(--parent-2); }
-    .gantt-row.done { background: #e5e9ef; }
     .is-collapsed-descendant {
       display: none !important;
     }

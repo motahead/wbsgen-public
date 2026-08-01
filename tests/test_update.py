@@ -6,6 +6,17 @@ from pathlib import Path
 from unittest import mock
 from wbsgen.update import add_holiday, add_milestone, add_task, atomic_write_text, format_diff, format_json, merge_holidays, move_task, next_task_id, remove_holiday, remove_milestone, remove_task, show_holidays, show_display, show_project, show_milestones, show_task, update_holiday, update_display_analysis, update_display_layers, update_display_standard, update_milestone, update_project, update_task
 
+
+def test_update_facade_reexports_domain_operations():
+    from wbsgen import update
+    from wbsgen import update_calendar, update_project_display, update_tasks
+
+    assert update.add_task is update_tasks.add_task
+    assert update.update_project is update_project_display.update_project
+    assert update.update_display_standard is update_project_display.update_display_standard
+    assert update.add_holiday is update_calendar.add_holiday
+    assert update.add_milestone is update_calendar.add_milestone
+
 class TestJsonUpdateTests:
 
     def base_data(self):
@@ -399,9 +410,9 @@ class TestHtmlSourceUpdateTests:
         source_child = __import__('wbsgen').Task(id='1.1', name='source', source_index=0)
         generated_root = __import__('wbsgen').Task(id='1', name='generated', generated=True, children=[source_child])
         data = {'project': {'name': 'P'}, 'tasks': [{'id': '1.1', 'name': 'source'}]}
-        with mock.patch('wbsgen.update._all_model_tasks', return_value={'1': generated_root, '1.1': source_child}):
+        with mock.patch('wbsgen.update_tasks._all_model_tasks', return_value={'1': generated_root, '1.1': source_child}):
             generated = show_task(data, '1', direct=False, complement=True)
-        with mock.patch('wbsgen.update._all_model_tasks', return_value={'1.1': source_child}):
+        with mock.patch('wbsgen.update_tasks._all_model_tasks', return_value={'1.1': source_child}):
             sparse = show_task(data, '1.1', direct=False, complement=True)
         assert generated['task']['generated'] == True
         assert [item['id'] for item in generated['children']] == ['1.1']
@@ -414,7 +425,7 @@ class TestHtmlSourceUpdateTests:
         generated_child = task_type(id='1.1', name='generated', generated=True, children=[source_leaf])
         source_root.children = [generated_child]
         data = {'project': {'name': 'P'}, 'tasks': [{'id': '1', 'name': 'root'}, {'id': '1.1.1', 'name': 'leaf'}]}
-        with mock.patch('wbsgen.update._all_model_tasks', return_value={'1': source_root, '1.1': generated_child, '1.1.1': source_leaf}):
+        with mock.patch('wbsgen.update_tasks._all_model_tasks', return_value={'1': source_root, '1.1': generated_child, '1.1.1': source_leaf}):
             result = show_task(data, '1', direct=False, complement=True)
         assert [item['id'] for item in result['children']] == ['1.1', '1.1.1']
 
@@ -425,7 +436,7 @@ class TestHtmlSourceUpdateTests:
         generated_child = task_type(id='1.1', name='generated', generated=True, children=[source_leaf])
         source_root.children = [generated_child, generated_child]
         data = {'project': {'name': 'P'}, 'tasks': [{'id': '1', 'name': 'root'}, {'id': '1.1.1', 'name': 'leaf'}]}
-        with mock.patch('wbsgen.update._all_model_tasks', return_value={'1': source_root, '1.1': generated_child, '1.1.1': source_leaf}):
+        with mock.patch('wbsgen.update_tasks._all_model_tasks', return_value={'1': source_root, '1.1': generated_child, '1.1.1': source_leaf}):
             result = show_task(data, '1', direct=True, complement=True)
         assert [item['id'] for item in result['children']] == ['1.1', '1.1']
 

@@ -21,6 +21,16 @@ from wbsgen.source import SourceDocument, SourceFormat, extract_html_source, loa
 
 class TestPackageModuleImportTests:
 
+    def test_package_reexports_runtime_entrypoints(self):
+        from wbsgen import cli, planner
+        from wbsgen.render import html
+
+        assert wbsgen.main is cli.main
+        assert wbsgen.parse_args is cli.parse_args
+        assert wbsgen.build_project_model is planner.build_project_model
+        assert wbsgen.flatten_computed_tasks is planner.flatten_computed_tasks
+        assert wbsgen.render_html is html.render_html
+
     def test_models_and_validation_are_importable_from_package_modules(self):
         from wbsgen.models import Project, Task, ComputedTask
         from wbsgen.validation import ValidationResult, CODE_PROJECT_REQUIRED
