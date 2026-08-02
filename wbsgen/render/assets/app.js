@@ -58,6 +58,11 @@
   let hoveredDateIndex = null;
   let shareLinkLabelTimeout = null;
   let activeTooltipTarget = null;
+  let touchGesture = null;
+  let touchInteractionActive = false;
+  const touchMoveThreshold = 12;
+  const touchHoldDelay = 500;
+  const hoverInteractionsEnabled = window.matchMedia?.('(hover: hover)').matches ?? true;
   const searchFieldKeys = ['name', 'comment', 'assignee', 'issue'];
   const searchState = {keyword: '', fields: new Set(searchFieldKeys), mode: 'filter'};
   let directMatchTaskIds = new Set();
@@ -644,7 +649,7 @@
   }
 
   function showTooltip(event, text) {
-    if (!tooltipsEnabled || !tooltipElement) {
+    if (!hoverInteractionsEnabled || !tooltipsEnabled || !tooltipElement) {
       return;
     }
     if (!text || !String(text).trim()) {
@@ -911,6 +916,78 @@
     };
   }
 
+  function clearTouchGesture() {
+    if (!touchGesture) {
+      return;
+    }
+    window.clearTimeout(touchGesture.holdTimer);
+    touchGesture = null;
+  }
+
+  function beginTouchGesture(event, action) {
+    if (event.pointerType !== 'touch') {
+      return;
+    }
+    clearTouchGesture();
+    hideTooltip();
+    hoveredTaskId = null;
+    hoveredDateIndex = null;
+    touchInteractionActive = true;
+    const gesture = {
+      action,
+      startX: event.clientX,
+      startY: event.clientY,
+      moved: false,
+      held: false,
+      holdTimer: null,
+    };
+    touchGesture = gesture;
+    gesture.holdTimer = window.setTimeout(() => {
+      if (touchGesture === gesture && !gesture.moved) {
+        gesture.held = true;
+      }
+    }, touchHoldDelay);
+  }
+
+  function moveTouchGesture(event) {
+    if (!touchGesture || event.pointerType !== 'touch') {
+      return;
+    }
+    const deltaX = event.clientX - touchGesture.startX;
+    const deltaY = event.clientY - touchGesture.startY;
+    if (Math.hypot(deltaX, deltaY) > touchMoveThreshold) {
+      touchGesture.moved = true;
+      window.clearTimeout(touchGesture.holdTimer);
+    }
+  }
+
+  function endTouchGesture(event) {
+    if (!touchGesture || event.pointerType !== 'touch') {
+      return;
+    }
+    const gesture = touchGesture;
+    clearTouchGesture();
+    if (!gesture.moved && !gesture.held) {
+      gesture.action();
+      renderHighlights();
+    }
+    window.setTimeout(() => {
+      touchInteractionActive = false;
+    }, 0);
+  }
+
+  function cancelTouchGesture() {
+    clearTouchGesture();
+    touchInteractionActive = false;
+  }
+
+  function bindTouchGesture(element, actionForEvent) {
+    element.addEventListener('pointerdown', (event) => beginTouchGesture(event, () => actionForEvent(event)));
+    element.addEventListener('pointermove', moveTouchGesture);
+    element.addEventListener('pointerup', endTouchGesture);
+    element.addEventListener('pointercancel', cancelTouchGesture);
+  }
+
   function startResize(event, handle, onDelta) {
     event.preventDefault();
     const startX = event.clientX;
@@ -996,11 +1073,17 @@
   });
 
   leftRows.forEach((row) => {
-    row.addEventListener('mouseenter', () => {
+    row.addEventListener('mouseenter', (event) => {
+      if (!hoverInteractionsEnabled || touchInteractionActive || event.sourceCapabilities?.firesTouchEvents) {
+        return;
+      }
       hoveredTaskId = row.dataset.taskId || null;
       renderHighlights();
     });
-    row.addEventListener('mouseleave', () => {
+    row.addEventListener('mouseleave', (event) => {
+      if (!hoverInteractionsEnabled || touchInteractionActive || event.sourceCapabilities?.firesTouchEvents) {
+        return;
+      }
       hoveredTaskId = null;
       renderHighlights();
     });
@@ -1012,14 +1095,25 @@
       togglePinnedTask(row.dataset.taskId);
       renderHighlights();
     });
+    row.addEventListener('dblclick', () => {
+      togglePinnedTask(row.dataset.taskId);
+      renderHighlights();
+    });
+    bindTouchGesture(row, () => togglePinnedTask(row.dataset.taskId));
   });
 
   dateCells.forEach((cell) => {
-    cell.addEventListener('mouseenter', () => {
+    cell.addEventListener('mouseenter', (event) => {
+      if (!hoverInteractionsEnabled || touchInteractionActive || event.sourceCapabilities?.firesTouchEvents) {
+        return;
+      }
       hoveredDateIndex = dateIndexForCell(cell);
       renderHighlights();
     });
-    cell.addEventListener('mouseleave', () => {
+    cell.addEventListener('mouseleave', (event) => {
+      if (!hoverInteractionsEnabled || touchInteractionActive || event.sourceCapabilities?.firesTouchEvents) {
+        return;
+      }
       hoveredDateIndex = null;
       renderHighlights();
     });
@@ -1031,16 +1125,27 @@
       togglePinnedDate(dateIndexForCell(cell));
       renderHighlights();
     });
+    cell.addEventListener('dblclick', () => {
+      togglePinnedDate(dateIndexForCell(cell));
+      renderHighlights();
+    });
+    bindTouchGesture(cell, () => togglePinnedDate(dateIndexForCell(cell)));
   });
 
   if (chartBody) {
     chartBody.addEventListener('mousemove', (event) => {
+      if (!hoverInteractionsEnabled || touchInteractionActive || event.sourceCapabilities?.firesTouchEvents) {
+        return;
+      }
       const position = positionFromChartEvent(event);
       hoveredTaskId = position.taskId;
       hoveredDateIndex = position.dateIndex;
       renderHighlights();
     });
-    chartBody.addEventListener('mouseleave', () => {
+    chartBody.addEventListener('mouseleave', (event) => {
+      if (!hoverInteractionsEnabled || touchInteractionActive || event.sourceCapabilities?.firesTouchEvents) {
+        return;
+      }
       hoveredTaskId = null;
       hoveredDateIndex = null;
       renderHighlights();
@@ -1054,7 +1159,26 @@
       togglePinnedScheduleCell(position.taskId, position.dateIndex);
       renderHighlights();
     });
+    chartBody.addEventListener('dblclick', (event) => {
+      const position = positionFromChartEvent(event);
+      togglePinnedScheduleCell(position.taskId, position.dateIndex);
+      renderHighlights();
+    });
+    bindTouchGesture(chartBody, (event) => {
+      const position = positionFromChartEvent(event);
+      togglePinnedScheduleCell(position.taskId, position.dateIndex);
+    });
   }
+
+  workspace?.addEventListener('scroll', () => {
+    if (touchGesture) {
+      touchGesture.moved = true;
+      window.clearTimeout(touchGesture.holdTimer);
+    }
+    if (touchGesture) {
+      hideTooltip();
+    }
+  }, {passive: true});
 
   if (highlightToggle) {
     highlightToggle.addEventListener('change', () => {

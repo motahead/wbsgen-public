@@ -453,6 +453,15 @@ class TestRenderAssetTests:
         assert 'highlightToggle.checked = false;' in app_js
         assert "chartBody.addEventListener('mousemove'" in app_js
         assert "chartBody.addEventListener('click'" in app_js
+        assert 'const touchMoveThreshold = 12;' in app_js
+        assert 'const touchTooltipDelay = 500;' not in app_js
+        assert 'const touchHoldDelay = 500;' in app_js
+        assert "const hoverInteractionsEnabled = window.matchMedia?.('(hover: hover)').matches ?? true;" in app_js
+        assert 'function beginTouchGesture(event, action)' in app_js
+        assert 'function tooltipForTouchTarget(element)' not in app_js
+        assert "row.addEventListener('dblclick'" in app_js
+        assert "cell.addEventListener('dblclick'" in app_js
+        assert "chartBody.addEventListener('dblclick'" in app_js
         assert 'if (!event.metaKey && !event.ctrlKey)' in app_js
         assert "if (event.key !== 'Escape')" in app_js
         assert 'pinnedTaskIds.clear();' in app_js
@@ -907,6 +916,96 @@ class TestHolidayRenderingTests:
         assert int(progress_x_match.group('x')) == holiday_point[0]
 
 class TestRenderHtmlTests:
+
+    def test_browser_supports_pointer_interaction_highlights_and_tooltips(self):
+        browser_python = Path('.venv/bin/python')
+        if not browser_python.is_file() or not Path('.cache/ms-playwright').exists():
+            pytest.skip('Playwright runtime is not available')
+        data = {
+            'project': {'name': 'ポインタ操作', 'startDate': '2026-06-01', 'endDate': '2026-06-05', 'statusDate': '2026-06-03'},
+            'tasks': [
+                {'id': '1', 'name': '長いタスク名をツールチップで確認する', 'plannedStart': '2026-06-01', 'plannedDuration': 2},
+                {'id': '2', 'name': '別のタスク', 'plannedStart': '2026-06-02', 'plannedDuration': 2},
+            ],
+        }
+        result = wbsgen.build_project_model(data, today=date(2026, 6, 3))
+        with tempfile.TemporaryDirectory() as tmp:
+            html_path = Path(tmp) / 'pointer-interaction.html'
+            html_path.write_text(wbsgen.render_html(data, result), encoding='utf-8')
+            runner = '''
+import json
+import sys
+from pathlib import Path
+from playwright.sync_api import sync_playwright
+
+html_path = Path(sys.argv[1]).resolve()
+
+with sync_playwright() as playwright:
+    browser = playwright.chromium.launch(headless=True, args=['--disable-gpu', '--disable-dev-shm-usage'])
+    try:
+        context = browser.new_context(viewport={'width': 1360, 'height': 900}, device_scale_factor=1, has_touch=True)
+        page = context.new_page()
+        page.goto(html_path.as_uri())
+        page.wait_for_timeout(150)
+        state = page.evaluate("""async () => {
+          const touch = (target, type, x, y) => target.dispatchEvent(new PointerEvent(type, {
+            bubbles: true, pointerType: 'touch', pointerId: 1, clientX: x, clientY: y,
+          }));
+          const pinned = () => ({
+            taskIds: Array.from(document.querySelectorAll('.wbs-row.is-pinned-task')).map((row) => row.dataset.taskId),
+            dateIndexes: Array.from(document.querySelectorAll('.date-cell.is-pinned-date')).map((cell) => Array.from(document.querySelectorAll('.date-cell')).indexOf(cell)),
+            crossCount: document.querySelectorAll('.highlight-cross.is-pinned').length,
+          });
+          const rows = Array.from(document.querySelectorAll('.wbs-row[data-task-id]'));
+          const dates = Array.from(document.querySelectorAll('.date-cell'));
+          const chart = document.querySelector('.chart-body');
+          touch(rows[0], 'pointerdown', 20, 80); touch(rows[0], 'pointerup', 20, 80);
+          touch(rows[1], 'pointerdown', 20, 112); touch(rows[1], 'pointerup', 20, 112);
+          touch(dates[0], 'pointerdown', 20, 80); touch(dates[0], 'pointerup', 20, 80);
+          touch(dates[1], 'pointerdown', 52, 80); touch(dates[1], 'pointerup', 52, 80);
+          const afterAdd = pinned();
+          touch(rows[0], 'pointerdown', 20, 80); touch(rows[0], 'pointerup', 20, 80);
+          const afterSecondTap = pinned();
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          const chartRect = chart.getBoundingClientRect();
+          chart.dispatchEvent(new MouseEvent('mousemove', {bubbles: true, clientX: chartRect.left + 16, clientY: chartRect.top + 16}));
+          const compatibilityHoverTaskIds = Array.from(document.querySelectorAll('.gantt-row.is-hovered-task')).map((row) => row.dataset.taskId);
+          touch(rows[0], 'pointerdown', 20, 80); touch(rows[0], 'pointermove', 34, 80); document.querySelector('.workspace').dispatchEvent(new Event('scroll')); touch(rows[0], 'pointerup', 34, 80);
+          const afterScroll = pinned();
+          const bar = document.querySelector('[data-tooltip-role="plan-bar"]');
+          touch(bar, 'pointerdown', 20, 120); await new Promise((resolve) => setTimeout(resolve, 550)); touch(bar, 'pointerup', 20, 120);
+          const tooltipVisibleAfterLongPress = document.querySelector('.app-tooltip').classList.contains('is-visible');
+          document.querySelector('.workspace').dispatchEvent(new Event('scroll'));
+          const tooltipVisibleAfterScroll = document.querySelector('.app-tooltip').classList.contains('is-visible');
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          rows[0].dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
+          const afterDoubleClick = pinned();
+          rows[0].dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
+          const afterSecondDoubleClick = pinned();
+          rows[0].dispatchEvent(new MouseEvent('click', {bubbles: true}));
+          const afterPlainClick = pinned();
+          return {hoverMatches: window.matchMedia('(hover: hover)').matches, afterAdd, afterSecondTap, compatibilityHoverTaskIds, afterScroll, tooltipVisibleAfterLongPress, tooltipVisibleAfterScroll, afterDoubleClick, afterSecondDoubleClick, afterPlainClick};
+        }""")
+        print(json.dumps(state))
+    finally:
+        browser.close()
+'''
+            proc = subprocess.run([str(browser_python), '-c', runner, str(html_path)], capture_output=True, text=True, env={**os.environ, 'PLAYWRIGHT_BROWSERS_PATH': '.cache/ms-playwright'})
+            if proc.returncode != 0:
+                if 'bootstrap_check_in' in proc.stderr or 'Permission denied' in proc.stderr:
+                    pytest.skip('Browser launch is not permitted in this environment')
+                pytest.fail(proc.stderr)
+            state = json.loads(proc.stdout)
+        assert state['afterAdd'] == {'taskIds': ['1', '2'], 'dateIndexes': [0, 1], 'crossCount': 4}
+        assert state['hoverMatches'] is False
+        assert state['afterSecondTap']['taskIds'] == ['2']
+        assert state['compatibilityHoverTaskIds'] == []
+        assert state['afterScroll']['taskIds'] == ['2']
+        assert state['tooltipVisibleAfterLongPress'] is False
+        assert state['tooltipVisibleAfterScroll'] is False
+        assert state['afterDoubleClick']['taskIds'] == ['1', '2']
+        assert state['afterSecondDoubleClick']['taskIds'] == ['2']
+        assert state['afterPlainClick']['taskIds'] == ['2']
 
     def test_render_html_groups_topbar_into_identity_and_actions_clusters(self):
         data = {'project': {'name': 'クラスタ確認', 'statusDate': '2026-06-10'}, 'tasks': []}

@@ -10,6 +10,7 @@ def test_command_markers_cover_each_public_cli_family():
     markers = verify_distribution.command_markers(Path("workflow.html"))
 
     assert ["--version"] in markers
+    assert ["describe"] in markers
     assert ["init", "initial.json", "--name", "初期化確認"] in markers
     assert ["template", "template.json"] in markers
     assert ["project", "show", "workflow.html"] in markers
@@ -63,6 +64,45 @@ def test_clean_validation_rejects_warning_report(tmp_path, monkeypatch):
         verify_distribution._assert_clean_validation(
             tmp_path / "wbsgen.pyz", "sample.json", tmp_path
         )
+
+
+def test_describe_contract_rejects_missing_update_dry_run(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        verify_distribution,
+        "run_zipapp",
+        lambda *_args: subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=(
+                '{"schemaVersion": 1, "commands": [{"name": "task", '
+                '"subcommands": [{"name": "update", "supportsDryRun": false}]}], '
+                '"verification": {"command": "validate", "jsonOption": "--json"}}'
+            ),
+            stderr="",
+        ),
+    )
+
+    with pytest.raises(AssertionError, match="task update"):
+        verify_distribution._assert_describe_contract(tmp_path / "wbsgen.pyz", tmp_path)
+
+
+def test_describe_contract_accepts_expected_command_map(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        verify_distribution,
+        "run_zipapp",
+        lambda *_args: subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=(
+                '{"schemaVersion": 1, "commands": [{"name": "task", '
+                '"subcommands": [{"name": "update", "supportsDryRun": true}]}], '
+                '"verification": {"command": "validate", "jsonOption": "--json"}}'
+            ),
+            stderr="",
+        ),
+    )
+
+    verify_distribution._assert_describe_contract(tmp_path / "wbsgen.pyz", tmp_path)
 
 
 def test_clean_validation_accepts_error_and_warning_free_report(tmp_path, monkeypatch):

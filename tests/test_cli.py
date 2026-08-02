@@ -107,6 +107,37 @@ class TestZipappBuildTests:
 
 class TestV2ParserContractTests:
 
+    def test_describe_prints_command_map(self, capsys):
+        assert wbsgen.main(["describe"]) == 0
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["schemaVersion"] == 1
+        task = next(command for command in payload["commands"] if command["name"] == "task")
+        assert task["summary"] == "Manage tasks in HTML."
+        update = next(command for command in task["subcommands"] if command["name"] == "update")
+        assert any(argument["name"] == "--dry-run" for argument in update["arguments"])
+        assert update["mutatesInput"] is True
+        assert update["supportsDryRun"] is True
+        export = next(
+            command for command in payload["commands"] if command["name"] == "export"
+        )
+        export_json = next(
+            command for command in export["subcommands"] if command["name"] == "json"
+        )
+        assert any(argument["name"] == "-o" for argument in export_json["arguments"])
+        assert payload["verification"] == {"command": "validate", "jsonOption": "--json"}
+
+    def test_no_args_guides_users_to_help(self, capsys):
+        with pytest.raises(SystemExit) as error:
+            wbsgen.parse_args([])
+
+        assert error.value.code == 2
+        assert (
+            "command is required. Run 'wbsgen describe' for a JSON command map, or "
+            "'wbsgen --help' for human-readable help."
+            in capsys.readouterr().err
+        )
+
     def test_accepts_holiday_import_gov(self):
         args = wbsgen.parse_args(['holiday', 'import-gov', 'project.html', '--csv', 'holidays.csv'])
         assert args.holiday_command == 'import-gov'

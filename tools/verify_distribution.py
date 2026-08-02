@@ -6,6 +6,7 @@ import argparse
 import csv
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -26,11 +27,51 @@ FIXTURE_DIR = PROJECT_ROOT / "tests" / "fixtures"
 SAMPLE_JSON = PROJECT_ROOT / "examples" / "sample.json"
 
 
+def _assert_no_args_guidance(zipapp: Path, work_dir: Path) -> None:
+    completed = subprocess.run(
+        [sys.executable, str(zipapp)],
+        cwd=work_dir,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    expected = (
+        "command is required. Run 'wbsgen describe' for a JSON command map, or "
+        "'wbsgen --help' for human-readable help."
+    )
+    if completed.returncode != 2 or expected not in completed.stderr:
+        raise AssertionError(
+            "zipapp no-args guidance differed: "
+            f"returncode={completed.returncode}, stderr={completed.stderr!r}"
+        )
+
+
+def _assert_describe_contract(zipapp: Path, work_dir: Path) -> None:
+    description = json.loads(run_zipapp(zipapp, ["describe"], work_dir).stdout)
+    commands = {command.get("name"): command for command in description.get("commands", [])}
+    task_commands = {
+        command.get("name"): command
+        for command in commands.get("task", {}).get("subcommands", [])
+    }
+    if description.get("schemaVersion") != 1:
+        raise AssertionError("describe schemaVersion was not 1")
+    if "task" not in commands:
+        raise AssertionError("describe did not include the task command")
+    if task_commands.get("update", {}).get("supportsDryRun") is not True:
+        raise AssertionError("describe task update did not report --dry-run support")
+    if description.get("verification") != {
+        "command": "validate",
+        "jsonOption": "--json",
+    }:
+        raise AssertionError("describe did not include the validate --json verification route")
+
+
 def command_markers(html_name: Path) -> list[list[str]]:
     """Return stable representative commands for unit-level coverage of the CLI tree."""
     html = str(html_name)
     return [
         ["--version"],
+        ["describe"],
         ["init", "initial.json", "--name", "初期化確認"],
         ["template", "template.json"],
         ["project", "show", html],
@@ -98,6 +139,8 @@ def _show_json(zipapp: Path, args: list[str], cwd: Path) -> dict[str, Any]:
 
 
 def _run_sample_contract(zipapp: Path, work_dir: Path) -> None:
+    _assert_no_args_guidance(zipapp, work_dir)
+    _assert_describe_contract(zipapp, work_dir)
     sample_json = work_dir / "sample.json"
     sample_html = work_dir / "sample.html"
     sample_export = work_dir / "sample-export.json"

@@ -214,8 +214,23 @@ def add_input_html_argument(parser: argparse.ArgumentParser, help_text: str) -> 
     parser.add_argument("input_html", type=Path, metavar="INPUT_HTML", help=help_text)
 
 
+class WbsgenArgumentParser(argparse.ArgumentParser):
+    """Add a next-step hint only when the top-level command is omitted."""
+
+    def error(self, message: str) -> None:
+        if message == "the following arguments are required: command":
+            self.print_usage(sys.stderr)
+            self.exit(
+                2,
+                f"{self.prog}: error: command is required. "
+                "Run 'wbsgen describe' for a JSON command map, or "
+                "'wbsgen --help' for human-readable help.\n",
+            )
+        super().error(message)
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = WbsgenArgumentParser(
         prog="wbsgen",
         description="Create, update, validate, generate, and export WBS projects.",
         formatter_class=lambda prog: argparse.HelpFormatter(prog, width=160),
@@ -227,6 +242,8 @@ def build_parser() -> argparse.ArgumentParser:
         title="commands",
         description="Choose a command. Run 'wbsgen COMMAND --help' for command details.",
     )
+    describe_parser = commands.add_parser("describe", help="Print a JSON command map for automation.")
+    describe_parser.set_defaults(handler=run_describe)
 
     init_parser = commands.add_parser(
         "init",
@@ -270,7 +287,7 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=_command_help_formatter,
     )
     add_input_html_argument(refresh_parser, "HTML source-of-truth file to regenerate in place.")
-    refresh_parser.set_defaults(handler=run_refresh)
+    refresh_parser.set_defaults(handler=run_refresh, mutates_input=True)
 
     validate_parser = commands.add_parser(
         "validate",
@@ -1031,6 +1048,78 @@ def run_version(args: argparse.Namespace) -> int:
             },
             ensure_ascii=False,
             separators=(",", ":"),
+        )
+    )
+    return 0
+
+
+def _describe_parser(
+    parser: argparse.ArgumentParser, *, name: str, summary: str
+) -> dict[str, object]:
+    subparsers = next(
+        (action for action in parser._actions if isinstance(action, argparse._SubParsersAction)),
+        None,
+    )
+    arguments = [
+        {
+            "name": action.option_strings[0]
+            if action.option_strings
+            else action.metavar or action.dest,
+            "kind": "option" if action.option_strings else "positional",
+            "required": action.required,
+        }
+        for action in parser._actions
+        if not isinstance(action, argparse._SubParsersAction)
+        and action.option_strings != ["-h", "--help"]
+    ]
+    supports_dry_run = any(
+        "--dry-run" in action.option_strings for action in parser._actions
+    )
+    subcommand_summaries = (
+        {action.dest: action.help for action in subparsers._choices_actions}
+        if subparsers is not None
+        else {}
+    )
+    return {
+        "name": name,
+        "summary": summary,
+        "arguments": arguments,
+        "subcommands": []
+        if subparsers is None
+        else [
+            _describe_parser(
+                child,
+                name=child_name,
+                summary=subcommand_summaries.get(child_name, ""),
+            )
+            for child_name, child in subparsers.choices.items()
+        ],
+        "mutatesInput": supports_dry_run or parser.get_default("mutates_input") is True,
+        "supportsDryRun": supports_dry_run,
+    }
+
+
+def run_describe(args: argparse.Namespace) -> int:
+    root = build_parser()
+    commands = next(a for a in root._actions if isinstance(a, argparse._SubParsersAction))
+    command_summaries = {action.dest: action.help for action in commands._choices_actions}
+    print(
+        json.dumps(
+            {
+                "schemaVersion": 1,
+                "commands": [
+                    _describe_parser(
+                        parser,
+                        name=name,
+                        summary=command_summaries.get(name, ""),
+                    )
+                    for name, parser in commands.choices.items()
+                    if name != "describe"
+                ],
+                "verification": {"command": "validate", "jsonOption": "--json"},
+            },
+            ensure_ascii=False,
+            sort_keys=True,
         )
     )
     return 0
