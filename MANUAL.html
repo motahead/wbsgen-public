@@ -5,24 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>WBS-GEN マニュアル</title>
 <style>
-  /* 案5: 案2の配色・構成そのまま。ID付き見出しを「緑の番号チップ＋スレート下線」に
-     格上げし、番号系はすべて計画グリーンで統一（表題欄の番号セル・手順番号・見出しID）。 */
   :root {
     --plan: #92c8a6;
     --progress: #4f936e;
-    --slate: #2f3a4a;
-    --slate-deep: #232d3a;
-    --parent: #6689ad;
     --parent-plan: #a8bfd7;
-    --amber: #c56f09;
+    --parent-progress: #6689ad;
     --warning: #a9470a;
-    --page: #f6f7f9;
+    --page: #f8fafc;
     --panel: #ffffff;
-    --head: #eef2f6;
-    --border: #d6dce5;
-    --ink: #202735;
+    --head: #f1f5f9;
+    --border: #dbe3ec;
+    --ink: #263548;
     --muted: #667085;
-    --link: #2563eb;
+    --link: #356d9b;
     --mono: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
   }
   * { box-sizing: border-box; }
@@ -30,26 +25,27 @@
     margin: 0;
     font-family: -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
     background: var(--page); color: var(--ink); line-height: 1.85;
+    -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
   }
   header.site {
-    background: var(--slate-deep); color: #fff; padding: 22px 36px;
-    display: flex; align-items: baseline; gap: 16px;
+    background: var(--panel); color: var(--ink); padding: 18px 36px;
+    display: flex; align-items: baseline; gap: 16px; border-bottom: 1px solid var(--parent-plan);
   }
   h1 { font-size: 21px; margin: 0; letter-spacing: .04em; font-weight: 700; }
   h1::before { content: "■ "; color: var(--progress); }
-  .sub { color: #9fb0c3; font-size: 13px; }
-  .ver { margin-left: auto; font-family: var(--mono); font-size: 12px; color: #cdd8e4; border: 1px solid #46586e; padding: 2px 12px; border-radius: 3px; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .ver { margin-left: auto; font-family: var(--mono); font-size: 12px; color: var(--parent-progress); border: 1px solid var(--parent-plan); padding: 2px 12px; border-radius: 3px; }
   /* nav(240) + gap(40) + .content(880) + 左右padding(72、border-box込み) */
   .wrap { max-width: 1240px; margin: 0 auto; padding: 8px 36px 64px; }
 
   .tblock {
     display: grid; grid-template-columns: auto 1fr auto; align-items: stretch;
-    margin: 56px 0 24px; border: 1px solid var(--slate);
-    background: var(--slate); color: #fff; border-radius: 3px; overflow: hidden;
+    margin: 56px 0 18px; border-bottom: 2px solid var(--plan);
+    background: transparent; color: var(--ink); border-radius: 0; overflow: visible;
   }
-  .tblock .no { font-family: var(--mono); font-weight: 700; font-size: 15px; background: var(--progress); color: #fff; display: flex; align-items: center; padding: 10px 16px; }
-  .tblock h2 { margin: 0; font-size: 19px; padding: 10px 18px; letter-spacing: .03em; }
-  .tblock .tag { font-family: var(--mono); font-size: 11px; color: #9fb0c3; display: flex; align-items: center; padding: 0 16px; border-left: 1px dashed #55677d; letter-spacing: .1em; }
+  .tblock .no { font-family: var(--mono); font-weight: 700; font-size: 14px; color: var(--progress); display: flex; align-items: center; padding: 8px 12px 8px 0; }
+  .tblock h2 { margin: 0; font-size: 22px; padding: 8px 12px; letter-spacing: .03em; }
+  .tblock .tag { font-family: var(--mono); font-size: 11px; color: var(--parent-progress); display: flex; align-items: center; padding: 0 12px; border-left: 1px solid var(--parent-plan); letter-spacing: .1em; }
 
   .step { display: grid; grid-template-columns: 52px 1fr; gap: 0; margin: 0 0 4px; }
   .step .rail { position: relative; }
@@ -64,25 +60,42 @@
   .step h3 { margin: 0 0 6px; font-size: 16px; }
   .step p { margin: 0 0 8px; }
 
-  /* 強調版ID見出し: 緑の番号チップ＋スレート太下線。番号=緑の規則で統一 */
+  .guide-steps { display: grid; gap: 12px; margin: 22px 0 28px; }
+  .guide-step {
+    position: relative; min-width: 0; padding: 16px 18px 16px 66px;
+    border: 1px solid var(--border); border-left: 4px solid var(--progress);
+    border-radius: 6px; background: var(--panel);
+  }
+  .guide-step__number {
+    position: absolute; left: 18px; top: 17px; width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: #fff; border: 2px solid var(--progress);
+    color: var(--progress); font-family: var(--mono); font-weight: 700; font-size: 13px;
+  }
+  .guide-step__title { margin: 0; font-size: 17px; line-height: 1.5; }
+  .guide-step__purpose { margin: 3px 0 10px; color: var(--muted); font-size: 14px; }
+  .guide-step__action { font-size: 14px; }
+  .guide-step__action p { margin: 0; }
+  .guide-step__action pre { margin: 0; }
+
   .row-h3 {
     display: flex; align-items: center; gap: 12px;
-    border-bottom: 3px solid var(--slate); margin: 38px 0 16px; padding-bottom: 8px;
+    border-bottom: 2px solid var(--plan); margin: 38px 0 16px; padding-bottom: 8px;
   }
   .row-h3 .id {
     font-family: var(--mono); font-size: 14px; font-weight: 700;
-    background: var(--progress); color: #fff; padding: 3px 12px; border-radius: 3px;
+    color: var(--progress); padding: 3px 0; border-radius: 3px;
     letter-spacing: .04em; flex: none;
   }
   .row-h3 h3 { margin: 0; font-size: 17px; letter-spacing: .02em; }
 
-  h4 { margin: 26px 0 8px; font-size: 15px; color: var(--slate); border-left: 3px solid var(--parent); padding-left: 10px; }
+  h4 { margin: 26px 0 8px; font-size: 15px; color: var(--ink); border-left: 3px solid var(--parent-progress); padding-left: 10px; }
 
   pre {
-    position: relative; background: var(--slate-deep); color: #dbe5ee;
-    padding: 14px 18px; border-radius: 6px; overflow-x: auto;
+    position: relative; background: var(--head); color: var(--ink);
+    max-width: 100%; padding: 14px 18px; border-radius: 6px; overflow-x: auto;
     font-family: var(--mono); font-size: 13px; line-height: 1.7; margin: 10px 0;
-    border-left: 4px solid var(--progress);
+    border: 1px solid var(--border); border-left: 4px solid var(--progress);
   }
   pre .cp { position: absolute; top: 8px; right: 8px; font-size: 11px; color: #cdd6e0; border: 1px solid #4a5768; border-radius: 4px; padding: 2px 10px; background: transparent; cursor: pointer; }
   code.inline { font-family: var(--mono); font-size: .9em; background: var(--head); border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; }
@@ -91,10 +104,10 @@
     display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start;
     border: 1px solid #ecd9c0; background: #fdf6ec; border-radius: 6px; padding: 12px 16px; margin: 20px 0;
   }
-  .callout .ic { width: 22px; height: 22px; background: var(--amber); color: #fff; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; margin-top: 4px; }
+  .callout .ic { width: 22px; height: 22px; background: var(--warning); color: #fff; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; margin-top: 4px; }
   .callout b { color: var(--warning); }
 
-  figure { margin: 26px 0; border: 1px solid var(--slate); border-radius: 3px; overflow: hidden; background: var(--panel); }
+  figure { margin: 26px 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--panel); }
   .fig-body {
     padding: 22px 26px 14px;
     background-image: linear-gradient(#eef2f6 1px, transparent 1px), linear-gradient(90deg, #eef2f6 1px, transparent 1px);
@@ -102,17 +115,17 @@
   }
   .fig-body > img { display: block; width: 100%; height: auto; border: 1px solid var(--border); }
   .fig-body > svg { display: block; width: 100%; height: auto; }
-  figcaption { display: flex; justify-content: space-between; background: var(--slate); color: #dbe5ee; font-size: 12px; padding: 6px 14px; font-family: var(--mono); letter-spacing: .05em; }
+  figcaption { display: flex; justify-content: space-between; background: var(--head); color: var(--muted); font-size: 12px; padding: 6px 14px; font-family: var(--mono); letter-spacing: .05em; }
 
   .refhead { display: flex; gap: 14px; margin: 0 0 16px; }
-  .filter { flex: 1; display: flex; align-items: center; gap: 8px; background: #fff; border: 2px solid var(--slate); border-radius: 4px; padding: 9px 14px; color: var(--muted); font-size: 13.5px; }
-  .cmd { border: 1px solid var(--border); border-left: 4px solid var(--parent); background: var(--panel); padding: 14px 20px; margin: 10px 0; border-radius: 0 6px 6px 0; }
+  .filter { flex: 1; display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--parent-plan); border-radius: 4px; padding: 9px 14px; color: var(--muted); font-size: 13.5px; }
+  .cmd { border: 1px solid var(--border); border-left: 4px solid var(--parent-progress); background: var(--panel); padding: 14px 20px; margin: 10px 0; border-radius: 0 6px 6px 0; }
   .cmd dt { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
   .cmd .t { font-weight: 700; }
-  .cmd dt code { font-family: var(--mono); font-size: 13px; background: var(--slate); color: #fff; padding: 4px 12px; border-radius: 3px; }
+  .cmd dt code { font-family: var(--mono); font-size: 13px; background: var(--head); color: var(--ink); padding: 4px 12px; border-radius: 3px; }
   .cmd dd { margin: 8px 0 0; color: #454e5e; }
   table { border-collapse: collapse; width: 100%; background: var(--panel); font-size: 14px; }
-  th { text-align: left; background: var(--slate); color: #fff; font-size: 12.5px; letter-spacing: .06em; font-weight: 600; }
+  th { text-align: left; background: var(--head); color: var(--ink); font-size: 12.5px; letter-spacing: .06em; font-weight: 600; }
   th, td { border: 1px solid var(--border); padding: 8px 14px; }
   td code { font-family: var(--mono); font-size: 12.5px; color: var(--warning); }
   .validation-level { font-family: var(--mono); font-size: 12.5px; }
@@ -146,12 +159,13 @@
   nav#toc a:hover { background: var(--head); }
   nav#toc a.active { border-left-color: var(--progress); background: #eaf3ee; font-weight: 700; }
   nav#toc .toc-sub a { padding-left: 30px; font-size: 12.5px; color: var(--muted); }
-  nav#toc .toc-sub a .n { color: var(--parent); font-weight: 400; }
+  nav#toc .toc-sub a .n { color: var(--parent-progress); font-weight: 400; }
+  #toc-toggle { display: none; width: 100%; margin: 10px 0 0; padding: 9px 12px; border: 1px solid var(--parent-plan); border-radius: 4px; background: var(--panel); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
 
   /* OS切り替え */
-  #os-toggle { display: inline-flex; border: 1px solid #46586e; border-radius: 3px; overflow: hidden; margin-left: 16px; }
+  #os-toggle { display: inline-flex; border: 1px solid var(--parent-plan); border-radius: 3px; overflow: hidden; margin-left: 16px; }
   #os-toggle button {
-    background: transparent; color: #9fb0c3; border: none; cursor: pointer;
+    background: transparent; color: var(--muted); border: none; cursor: pointer;
     font-family: var(--mono); font-size: 11.5px; padding: 4px 12px; letter-spacing: .04em;
   }
   #os-toggle button[aria-pressed="true"] { background: var(--progress); color: #fff; }
@@ -159,11 +173,11 @@
   /* コピーボタン（JSが生成） */
   pre { padding-right: 76px; }
   pre .cp {
-    position: absolute; top: 8px; right: 8px; font-size: 11px; color: #cdd6e0;
-    border: 1px solid #4a5768; border-radius: 4px; padding: 2px 10px;
+    position: absolute; top: 8px; right: 8px; font-size: 11px; color: var(--muted);
+    border: 1px solid var(--parent-plan); border-radius: 4px; padding: 2px 10px;
     background: transparent; cursor: pointer; font-family: inherit;
   }
-  pre .cp:hover { background: #3a4759; }
+  pre .cp:hover { background: #e3edf5; }
 
   /* 絞り込み */
   .filter input {
@@ -174,14 +188,47 @@
 
   /* フッター */
   footer.site {
-    margin-top: 72px; border-top: 2px solid var(--slate); padding: 18px 0 48px;
+    margin-top: 72px; border-top: 2px solid var(--parent-plan); padding: 18px 0 48px;
     font-size: 12.5px; color: var(--muted); display: flex; gap: 24px;
   }
 
   /* アクセシビリティ */
-  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  :focus-visible { outline: 2px solid var(--progress); outline-offset: 2px; }
   [id] { scroll-margin-top: 12px; }
   html { scroll-behavior: smooth; }
+  @media (max-width: 1023px) {
+    header.site { padding: 16px 24px; flex-wrap: wrap; }
+    .wrap { padding: 8px 24px 48px; }
+    .layout { display: block; }
+    #toc-toggle {
+      display: block; position: sticky; top: env(safe-area-inset-top); z-index: 20;
+      box-shadow: 0 4px 12px rgba(38, 53, 72, .08);
+    }
+    nav#toc { display: none; position: static; max-height: none; margin: 8px 0 22px; }
+    nav#toc.is-open {
+      display: block; position: fixed; top: calc(env(safe-area-inset-top) + 52px);
+      right: 24px; left: 24px; z-index: 19; max-height: calc(100dvh - 68px);
+      margin: 0; box-shadow: 0 12px 28px rgba(38, 53, 72, .16);
+    }
+    .content { max-width: none; }
+  }
+  @media (max-width: 767px) {
+    header.site { padding: 14px 16px; gap: 8px; }
+    .sub { width: 100%; }
+    .ver { margin-left: 0; }
+    .wrap { padding: 8px 16px 40px; }
+    .tblock { margin-top: 40px; grid-template-columns: auto 1fr; }
+    .tblock .tag { display: none; }
+    .tblock h2 { font-size: 20px; }
+    .guide-step { padding: 14px 14px 14px 58px; }
+    .guide-step__number { left: 14px; top: 15px; }
+    nav#toc.is-open { right: 16px; left: 16px; }
+    .refhead { display: block; }
+    .filter { margin-bottom: 10px; }
+    .fig-body { padding: 14px; overflow-x: auto; }
+    table { min-width: 640px; }
+    .content { overflow: hidden; }
+  }
   @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 </style>
 </head>
@@ -195,7 +242,9 @@
   </span>
   <a class="ver" href="https://github.com/motahead/wbsgen-public/releases/latest">Releases</a>
 </header>
-<div class="wrap"><div class="layout">
+<div class="wrap">
+<button id="toc-toggle" type="button" aria-controls="toc" aria-expanded="false">目次を開く</button>
+<div class="layout">
 <nav id="toc" aria-label="目次">
   <p class="toc-group">GUIDE</p>
   <ul>
@@ -231,37 +280,37 @@
     <span class="tag">GUIDE</span>
   </div>
 
-  <p>WBS-GEN は、JSONまたはHTMLの内容を入力として、WBSとガントチャートを含む静的HTMLを生成・更新するローカルCLIツールです。このマニュアルは、GUIDE（1〜3章）でセットアップと日々の使い方を、REFERENCE（4〜8章）でコマンドと入出力JSONの仕様を扱う2部構成になっています。</p>
-  <p><strong>JSON運用</strong>ではJSONを編集して <code class="inline">generate</code> でHTMLを新規作成します。<strong>HTML運用</strong>では <code class="inline">script#wbsgen-source[type="application/json"]</code> の埋め込みJSONをCLIで更新します。選んだ運用のデータだけを永続データとして更新し、画面・CSS・JavaScriptは派生物として再生成されます。ブラウザー編集、自動同期、競合処理は対象外です。</p>
+  <p>WBS-GEN は、WBSとガントチャートを含む静的HTMLを作成・更新するローカルCLIツールです。この章では、最初のプロジェクトを作成してHTMLを開くまでの3手順を案内します。</p>
+  <p>初めて使う場合は、<strong>JSON運用</strong>を選んでください。JSONを編集して <code class="inline">generate</code> でHTMLを作ります。すでに生成したHTMLをCLIで更新し続ける場合だけ、<strong>HTML運用</strong>を選びます。JSONとHTMLを同時に編集する必要はありません。</p>
+  <p>日々の更新方法は<a href="#workflow">2章</a>、コマンドと入力形式の詳細はREFERENCE（4章以降）を参照してください。</p>
 
   <div class="row-h3" id="getting-started-prereq"><span class="id">1.1</span><h3>前提条件</h3></div>
   <ul>
     <li>Python 3.12 以上</li>
     <li>モダンブラウザ（生成したHTMLの閲覧に使用します）</li>
-    <li>インターネット接続は不要です（祝日の自動取得は行いません）</li>
+    <li>AIエージェント用Skillを使う場合: Skillを導入できるAIエージェント環境</li>
+    <li>インターネット接続は不要です（<code class="inline">holiday import-gov</code>で内閣府CSVを自動取得する場合を除く）</li>
   </ul>
 
-  <div class="step">
-    <div class="rail"><div class="step-no">1</div></div>
-    <div class="body">
-      <h3>ダウンロード</h3>
-      <p>GitHub Releases から <a href="https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen.pyz">wbsgen.pyz</a> と<a href="https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen-manual.html">マニュアル</a>を取得します。</p>
-    </div>
-  </div>
-  <div class="step">
-    <div class="rail"><div class="step-no">2</div></div>
-    <div class="body">
-      <h3>プロジェクトJSONを作る</h3>
-      <pre><code class="os-cmd">python3 wbsgen.pyz init my-project.json --name "個人開発プロジェクト"</code></pre>
-    </div>
-  </div>
-  <div class="step">
-    <div class="rail"><div class="step-no">3</div></div>
-    <div class="body">
-      <h3>HTMLを生成して開く</h3>
-      <pre><code class="os-cmd">python3 wbsgen.pyz generate my-project.json -o output.html</code></pre>
-      <p><code class="inline">output.html</code> をブラウザで開くと、WBS表とガントチャートが表示されます。画面の説明は<a href="#screen-guide">3章</a>へ。</p>
-    </div>
+  <div class="guide-steps" aria-label="はじめるための3手順">
+    <article class="guide-step">
+      <span class="guide-step__number">1</span>
+      <h3 class="guide-step__title">ダウンロード</h3>
+      <p class="guide-step__purpose">まず実行ファイルを取得します。</p>
+      <div class="guide-step__action"><p><strong>必須</strong>は実行ファイルの<a href="https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen.pyz">wbsgen.pyz</a>だけです。必要に応じて、<a href="https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen-manual.html">マニュアル</a>、JSON形式の記入例である<a href="https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen-sample.json">wbsgen-sample.json</a>、AIエージェント用Skillの<a href="https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen-skill.zip">wbsgen-skill.zip</a>も取得します。</p></div>
+    </article>
+    <article class="guide-step">
+      <span class="guide-step__number">2</span>
+      <h3 class="guide-step__title">プロジェクトJSONを作る</h3>
+      <p class="guide-step__purpose">新しいWBSの入力ファイルを用意します。</p>
+      <div class="guide-step__action"><p><code class="inline">wbsgen.pyz</code> を置いた作業用フォルダで、次を実行します。</p><pre><code class="os-cmd">python3 wbsgen.pyz init my-project.json --name "個人開発プロジェクト"</code></pre></div>
+    </article>
+    <article class="guide-step">
+      <span class="guide-step__number">3</span>
+      <h3 class="guide-step__title">HTMLを生成して開く</h3>
+      <p class="guide-step__purpose">作成したJSONを、WBS表とガントチャートを含むHTMLへ変換します。</p>
+      <div class="guide-step__action"><pre><code class="os-cmd">python3 wbsgen.pyz generate my-project.json -o output.html</code></pre><p><code class="inline">output.html</code> をダブルクリックするか、ブラウザへドラッグして開きます。画面の説明は<a href="#screen-guide">3章</a>へ。</p></div>
+    </article>
   </div>
 
   <!-- manual-figure:fig1:start -->
@@ -271,7 +320,12 @@
   </figure>
   <!-- manual-figure:fig1:end -->
 
-  <div class="row-h3" id="getting-started-dev"><span class="id">1.2</span><h3>開発者向け補足</h3></div>
+  <div class="row-h3" id="getting-started-ai-skill"><span class="id">1.2</span><h3>AIエージェント用Skill</h3></div>
+  <p>SkillはCLIの代替ではなく、AIエージェントが同じ作業ディレクトリにある<code class="inline">wbsgen.pyz</code>を安全な手順で操作するための補助です。新規WBS作成、既存HTMLの更新、検証エラーの回復、JSON/Markdown/CSV/XLSX出力を依頼する場面で使えます。</p>
+  <p>Skill名は<code class="inline">wbsgen</code>です。明示的に使いたい場合は、AIエージェントへ「<code class="inline">wbsgen</code> Skillを使用してください。既存の<code class="inline">project.html</code>を検証・更新してください」のように依頼します。スラッシュコマンドをサポートする環境では<code class="inline">/wbsgen</code>も使えます。操作の自動検出は<a href="#commands">4章のAI向け操作地図（describe）</a>を参照します。</p>
+  <p><code class="inline">wbsgen-skill.zip</code>を展開し、利用するAI製品の公式手順で定めるSkill検索パスへ<code class="inline">wbsgen/</code>を配置してください。具体例と注意事項はarchive内の<code class="inline">INSTALL.md</code>を参照してください。WBS-GENリポジトリとは別の新しい作業ディレクトリで試す場合は、<code class="inline">.codex/skills</code>（Codex）または<code class="inline">.claude/skills</code>（Claude Code）を使えます。製品の公式手順と異なる場合は、公式手順を優先してください。</p>
+
+  <div class="row-h3" id="getting-started-dev"><span class="id">1.3</span><h3>開発者向け補足</h3></div>
   <p>開発環境では <code class="inline">.venv/bin/python -m wbsgen</code> または <code class="inline">.venv/bin/python wbsgen.py</code> も同じサブコマンドで使えます。リポジトリのソースツリーから直接実行する場合は、事前に <code class="inline">.venv/bin/python -m pip install -r requirements.txt</code> を実行して <code class="inline">openpyxl</code> を導入してください。</p>
 </section>
 
@@ -282,32 +336,31 @@
     <span class="tag">GUIDE</span>
   </div>
 
-  <p>正本は一方だけを選びます。JSON運用では編集後に検証・生成し、HTML運用ではHTMLだけを更新コマンドへ渡します。同じ内容を両方で並行編集しません。HTML運用のJSONバックアップには <code class="inline">export json</code> を使います。</p>
+  <p>日々の更新では、JSONまたはHTMLのどちらか一方だけを編集します。JSON運用では編集後に検証・生成し、HTML運用ではHTMLを更新コマンドへ渡します。同じ内容を両方で並行編集しません。</p>
+  <p>HTML運用でJSONのバックアップが必要な場合は、<code class="inline">export json</code> を使います。</p>
 
   <div class="row-h3" id="workflow-cli"><span class="id">2.1</span><h3>CLIで更新する</h3></div>
-  <p>タスクやプロジェクト、マイルストーン、休日の情報は、サブコマンドを使って1件ずつ追加・更新・参照・削除できます。よく使う操作の例は次のとおりです。</p>
-  <pre><code class="os-cmd">python3 wbsgen.pyz task add output.html --id 1.2 --name "実装"
-python3 wbsgen.pyz task add output.html --parent-id 1 --name "実装"
-python3 wbsgen.pyz task add output.html --name "リリース"
-python3 wbsgen.pyz task update output.html --id 1.2 --progress 50 --dry-run
-python3 wbsgen.pyz task show output.html --id 1 --direct
-python3 wbsgen.pyz task show output.html --id 1.2 --complement
+  <p>HTML運用では、まず <code class="inline">--dry-run</code> で変更内容を確認してから更新します。たとえば、ID <code class="inline">1.2</code> の進捗を50%へ更新する場合は次のとおりです。</p>
+  <pre><code class="os-cmd">python3 wbsgen.pyz task update output.html --id 1.2 --progress 50 --dry-run
+python3 wbsgen.pyz task update output.html --id 1.2 --progress 50</code></pre>
+  <p>ほかによく使う操作は次のとおりです。</p>
+  <pre><code class="os-cmd">python3 wbsgen.pyz task add output.html --parent-id 1 --name "実装"
+python3 wbsgen.pyz task show output.html --id 1.2
+python3 wbsgen.pyz task remove output.html --id 1.2 --recursive --dry-run
 python3 wbsgen.pyz milestone add output.html --date 2026-07-20 --name "リリース判定"
-python3 wbsgen.pyz holiday merge output.html --from holidays.json
+python3 wbsgen.pyz holiday add output.html --date 2026-08-10 --name "会社休日"
 python3 wbsgen.pyz project update output.html --status-date 2026-07-16</code></pre>
   <ul>
     <li><code class="inline">task add</code>: <code class="inline">--id</code> でIDを明示するほか、<code class="inline">--parent-id 1</code> で親1の直下へ、親未指定ならトップレベルへタスクを自動採番して追加します。</li>
-    <li><code class="inline">task update</code>: ID <code class="inline">1.2</code> の進捗を50%に更新します。<code class="inline">--dry-run</code> を付けているため、実際には書き込まれず、変更内容の差分だけが表示されます。</li>
-    <li><code class="inline">task show</code>: ID <code class="inline">1</code> のタスクの内容を確認します。<code class="inline">--direct</code> を付けると、表示される親・子タスクの範囲を直属の親子だけに絞ります（既定では祖先・子孫のすべてを表示します）。<code class="inline">--complement</code> を付けると、休日カレンダー考慮済みの計画終了日など、原本JSONに無い計算値を読み取り専用で確認できます。</li>
+    <li><code class="inline">task update</code>: 1行目は差分だけを表示し、2行目で更新を反映します。</li>
+    <li><code class="inline">task show</code>: ID <code class="inline">1.2</code> のタスク内容を確認します。</li>
     <li><code class="inline">task remove</code>: ID <code class="inline">1.2</code> のタスクを子タスクごと（<code class="inline">--recursive</code>）削除します。こちらも <code class="inline">--dry-run</code> により、実際には削除せず対象を確認できます。</li>
     <li><code class="inline">milestone add</code>: <code class="inline">2026-07-20</code> に「リリース判定」というマイルストーンを追加します。ガント上には帯表示の◆マーカーとして反映されます。</li>
-    <li><code class="inline">milestone show</code>: 登録済みのマイルストーンを日付順のJSONで確認します。</li>
-    <li><code class="inline">holiday add</code>: <code class="inline">2026-08-10</code> を「会社休日」として入力JSON自身の休日に追加します。</li>
-    <li><code class="inline">holiday show</code>: 登録済みの休日を日付順のJSONで確認します。</li>
+    <li><code class="inline">holiday add</code>: <code class="inline">2026-08-10</code> を「会社休日」としてHTMLに保存されている休日へ追加します。</li>
     <li><code class="inline">project update</code>: プロジェクト全体の基準日（進捗計算などに使う日付）を更新します。</li>
   </ul>
   <p><code class="inline">--dry-run</code> を付けたコマンドは、ファイルに書き込まず差分表示だけを行います。内容を確認してから、<code class="inline">--dry-run</code> を外して再実行すれば反映されます。また、いずれの更新コマンドも、保存の直前にJSON全体が検証され、エラーがあれば書き込まれません。各サブコマンドの詳細な引数は<a href="#commands">4章</a>を参照してください。</p>
-  <p>更新コマンドは入力HTMLを再生成し、同じパスへアトミック保存します。<code class="inline">--dry-run</code> は保存せず差分だけを示します。metadataなしHTMLは、初回更新または <code class="inline">refresh</code> で <code class="inline">generatorVersion</code> を追加して移行します。</p>
+  <p>更新コマンドは、確認できた内容を同じHTMLファイルへ保存します。<code class="inline">--dry-run</code> は保存せず、差分だけを示します。</p>
 
   <div class="row-h3" id="workflow-editor"><span class="id">2.2</span><h3>エディタで直接編集する</h3></div>
   <p>プロジェクトJSONはテキストファイルなので、お使いのエディタで直接開いて編集しても構いません。複数のタスクをまとめて書き換えたい場合や、CLIの引数に対応していない細部を調整したい場合に向いています。JSONの書式（各フィールドの意味や必須項目）の詳細は<a href="#input-format">5章</a>を参照してください。エディタで編集したあとは、次の<code class="inline">validate</code>で内容を確認してください。</p>
@@ -329,7 +382,7 @@ python3 wbsgen.pyz generate my-project.json -o output.html --overwrite</code></p
     <span class="tag">GUIDE</span>
   </div>
 
-  <p>生成HTMLの画面は、上部のトップバーと、左右2ペイン（WBS表・ガントチャート）で構成されます。WBS表の下端には、生成日時・バージョンを示すフッターがあります。GitHubリポジトリ・マニュアルへの導線は、上部の☰メニュー内「WBS-GENについて」から確認できます。ここでは画面の各部と、ガントの色分けの意味を説明します。</p>
+  <p>生成HTMLの画面は、上部のトップバーと、左右2ペイン（WBS表・ガントチャート）で構成されます。この章では、画面の各部とガントの色分けの意味を説明します。メニュー、列、検索などの詳しい操作は<a href="#generated-html">7章</a>を参照してください。</p>
 
   <div class="row-h3" id="screen-guide-layout"><span class="id">3.1</span><h3>画面レイアウト</h3></div>
   <!-- manual-figure:fig2:start -->
@@ -642,7 +695,7 @@ python3 wbsgen.pyz holiday import-gov report.html --csv holidays.csv</code></pre
     <span class="tag">REFERENCE</span>
   </div>
 
-  <p>生成された <code class="inline">output.html</code> をブラウザで開くと、WBS表とガントチャートを確認できる。ここでは、表示の操作（7.1）、画面レイアウトの操作（7.2）、初期表示とURLクエリでの一時的な切り替え（7.3）について説明する。</p>
+  <p>生成された <code class="inline">output.html</code> の詳しい操作を説明します。画面の見方と色の意味は<a href="#screen-guide">3章</a>、ここでは表示の操作（7.1）、画面レイアウトの操作（7.2）、初期表示とURLクエリでの一時的な切り替え（7.3）を扱います。</p>
 
   <div class="row-h3" id="generated-html-view"><span class="id">7.1</span><h3>表示の操作</h3></div>
 
@@ -774,6 +827,8 @@ output.html?columnWidths=name:300,comment:200</code></pre>
     <h2>検証コード一覧</h2>
     <span class="tag">REFERENCE</span>
   </div>
+
+  <p>エラーが出たときは、まず <code class="inline">validate INPUT_JSON</code> または更新対象HTMLに対する更新コマンドを実行し、メッセージの <code class="inline">path</code> で対象項目を確認します。次に、この章でコードを検索して原因を直し、同じコマンドをもう一度実行します。警告は処理を止めませんが、計画日や親子関係が意図どおりか確認してください。</p>
 
   <div class="row-h3" id="validation-codes"><span class="id">8.1</span><h3>コード一覧</h3></div>
   <div class="refhead">
@@ -919,6 +974,25 @@ output.html?columnWidths=name:300,comment:200</code></pre>
   osButtons.forEach(function (b) {
     b.addEventListener('click', function () { setOs(b.dataset.os); });
   });
+
+  var tocToggle = document.getElementById('toc-toggle');
+  var toc = document.getElementById('toc');
+  if (tocToggle && toc) {
+    tocToggle.addEventListener('click', function () {
+      var open = toc.classList.toggle('is-open');
+      tocToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      tocToggle.textContent = open ? '目次を閉じる' : '目次を開く';
+    });
+    toc.querySelectorAll('a').forEach(function (link) {
+      link.addEventListener('click', function () {
+        if (window.matchMedia('(max-width: 1023px)').matches) {
+          toc.classList.remove('is-open');
+          tocToggle.setAttribute('aria-expanded', 'false');
+          tocToggle.textContent = '目次を開く';
+        }
+      });
+    });
+  }
 
   /* 絞り込み（コマンド・検証コード共通） */
   function bindFilter(inputId, targetsSelector, emptyId) {

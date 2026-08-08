@@ -12,6 +12,7 @@ WBS-GENは、WBSとガントチャートの管理を「ファイル1枚」に閉
 
 - Python 3.12 以上（OS不問。Windowsでは`python3`ではなく`python`コマンドになる場合があります）
 - モダンブラウザ（生成したHTMLの閲覧に使用します）
+- AIエージェント用Skillを使う場合: Skillを導入できるAIエージェント環境
 - インターネット接続は不要です（祝日の自動取得コマンドを使う場合を除く）
 
 ## できること
@@ -23,16 +24,25 @@ WBS-GENは、WBSとガントチャートの管理を「ファイル1枚」に閉
 - 休日データの取り込み（JSON直接指定・外部JSONファイル、または内閣府CSVの自動取得。自動取得のみインターネット接続が必要）
 - 表示列・表示レイヤーのカスタマイズ、URLクエリでの一時共有、JSON/Markdown/CSV/XLSXエクスポート
 
-詳細は[配布用マニュアル](https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen-manual.html)を参照してください。
-
 ![分析タブ](docs/readme/screenshot-analysis.png)
 
 ## ダウンロード
 
 - 実行ファイル: [wbsgen.pyz](https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen.pyz)
 - サンプル: [wbsgen-sample.json](https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen-sample.json)
+- AIエージェント用Skill: [wbsgen-skill.zip](https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen-skill.zip)
 
-**詳しい使い方は[配布用マニュアル](https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen-manual.html)を参照してください。**
+CLIの使い方は[配布用マニュアル](https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen-manual.html)を参照してください。
+
+## AIエージェント用Skill
+
+WBS-GENはCLI（`wbsgen.pyz`）に加えて、AIエージェントが配布CLIを安全な手順で操作するためのSkillを提供しています。新規WBS作成、既存HTMLの更新、検証エラーの回復、JSON/Markdown/CSV/XLSX出力をエージェントに依頼する場面で使えます。
+
+Skill名は`wbsgen`です。明示的に使いたい場合は、AIエージェントへ「`wbsgen` Skillを使用してください。既存の`project.html`を検証・更新してください」のように依頼します。スラッシュコマンドをサポートする環境では`/wbsgen`も使えます。
+
+`wbsgen-skill.zip`を展開し、利用するAI製品の公式手順で定めるSkill検索パスへ`wbsgen/`を配置してください。具体例と注意事項は、archive内の`INSTALL.md`を開いて確認してください。SkillはCLIの代替ではなく、同じ作業ディレクトリに置いた`wbsgen.pyz`を操作するための補助です。Skillは、そのzipappの`wbsgen describe`と対象コマンドの`--help`を参照して利用可能な操作を把握します。
+
+Skillの操作方法は、[配布用マニュアル](https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen-manual.html)のAIエージェント向け説明を参照してください。
 
 ## クイックスタート
 

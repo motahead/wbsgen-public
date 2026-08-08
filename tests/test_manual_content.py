@@ -39,6 +39,98 @@ def test_manual_internal_anchors_resolve():
     assert not sorted(hrefs - ids)
 
 
+def test_manual_and_readme_link_to_portable_skill_archive():
+    manual, _ = _manual_markup()
+    readme = Path("README.md").read_text(encoding="utf-8")
+    url = "https://github.com/motahead/wbsgen-public/releases/latest/download/wbsgen-skill.zip"
+
+    assert url in manual
+    assert url in readme
+
+
+def test_manual_and_readme_explain_ai_agent_skill_value_and_installation():
+    manual, _ = _manual_markup()
+    readme = Path("README.md").read_text(encoding="utf-8")
+
+    for document in (manual, readme):
+        for text in (
+            "AIエージェント用Skill",
+            "新規WBS作成",
+            "既存HTMLの更新",
+            "検証エラーの回復",
+            "INSTALL.md",
+        ):
+            assert text in document
+
+    assert "Skill名は`wbsgen`" in readme
+    assert 'Skill名は<code class="inline">wbsgen</code>' in manual
+
+
+def test_skill_guidance_uses_separate_zipapp_and_follows_getting_started_steps():
+    manual, _ = _manual_markup()
+    readme = Path("README.md").read_text(encoding="utf-8")
+
+    assert "同梱zipapp" not in readme
+    assert "同じ作業ディレクトリに置いた`wbsgen.pyz`" in readme
+    assert manual.index("<!-- manual-figure:fig1:end -->") < manual.index(
+        'id="getting-started-ai-skill"'
+    )
+    assert 'href="#commands">4章のAI向け操作地図（describe）' in manual
+    assert "JSON形式の記入例である" in manual
+    assert "wbsgen-sample.json" in manual
+    assert "AIエージェント用Skillを使う場合: Skillを導入できるAIエージェント環境" in readme
+    assert "`wbsgen describe`と対象コマンドの`--help`" in readme
+
+
+def test_getting_started_steps_share_one_markup_contract():
+    _, markup = _manual_markup()
+    section = re.search(
+        r'<section id="getting-started">(?P<body>.*?)</section>',
+        markup,
+        flags=re.S,
+    )
+    assert section is not None
+
+    steps = re.findall(
+        r'<article class="guide-step">(?P<body>.*?)</article>',
+        section.group("body"),
+        flags=re.S,
+    )
+    assert len(steps) == 3
+
+    for index, step in enumerate(steps, start=1):
+        assert f'<span class="guide-step__number">{index}</span>' in step
+        for class_name in (
+            "guide-step__title",
+            "guide-step__purpose",
+            "guide-step__action",
+        ):
+            assert f'class="{class_name}"' in step
+
+
+def test_manual_uses_generated_html_accent_colors_and_accessible_toc_toggle():
+    manual, markup = _manual_markup()
+    for token, value in {
+        "--plan": "#92c8a6",
+        "--progress": "#4f936e",
+        "--parent-plan": "#a8bfd7",
+        "--parent-progress": "#6689ad",
+        "--warning": "#a9470a",
+    }.items():
+        assert f"{token}: {value};" in manual
+
+    assert 'id="toc-toggle"' in markup
+    assert 'aria-controls="toc"' in markup
+    assert 'aria-expanded="false"' in markup
+
+
+def test_manual_prevents_ios_from_auto_scaling_guide_step_text():
+    manual, _ = _manual_markup()
+
+    assert "-webkit-text-size-adjust: 100%;" in manual
+    assert "text-size-adjust: 100%;" in manual
+
+
 def test_all_cli_commands_have_reference_entries():
     _, markup = _manual_markup()
     entries = re.findall(r'<dl class="cmd">.*?</dl>', markup, flags=re.S)
@@ -79,6 +171,15 @@ def test_manual_documents_gov_holiday_import_risks():
     assert caution is not None
     for text in ("--url URL", "HTTPS", "--dry-run", "--csv PATH", "HTMLを変更しない"):
         assert text in caution.group("content")
+
+
+def test_manual_states_network_requirement_for_gov_holiday_import():
+    manual, _ = _manual_markup()
+
+    assert (
+        'インターネット接続は不要です（<code class="inline">holiday import-gov</code>'
+        "で内閣府CSVを自動取得する場合を除く）"
+    ) in manual
 
 
 def test_manual_does_not_include_obsolete_v1_migration_section():

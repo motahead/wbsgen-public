@@ -12,6 +12,14 @@ release.ymlが起動時に`$GITHUB_REF_NAME`と完全一致する見出しを機
 Breaking Changeがある場合は、分類より前に `### Breaking Changes` として
 記載し、必要な移行手順を添える。
 
+## v3.5.0
+
+### 新機能
+- GitHub Releaseに、AIエージェント向けの操作Skillアーカイブ `wbsgen-skill.zip` を追加しました。CodexやClaude Codeなどで、配布zipappを安全な手順で操作できます。
+
+### 改善
+- 配布マニュアルの章構造と導入手順を整理し、PC・iPad・iPhoneを含む画面幅で読みやすくしました。
+
 ## v3.4.0
 
 ### 新機能

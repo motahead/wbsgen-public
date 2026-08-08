@@ -48,8 +48,8 @@ description = "Verify checked-in manual figure outputs are current."
 run = "PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright sh -c 'if [ -x .venv/bin/python ]; then .venv/bin/python tools/render_manual_figures.py --check; else python3 tools/render_manual_figures.py --check; fi'"
 
 [tasks.verify-manual]
-description = "Verify manual content and generated figures."
-run = "sh -c 'py=${WBSGEN_PYTHON:-.venv/bin/python}; \"$py\" -m pytest tests/test_manual_content.py && mise run manual-figures-check'"
+description = "Verify manual content, responsive rendering, and generated figures."
+run = "PLAYWRIGHT_BROWSERS_PATH=.cache/ms-playwright sh -c 'py=${WBSGEN_PYTHON:-.venv/bin/python}; \"$py\" -m pytest tests/test_manual_content.py tests/test_verify_manual_visual.py && \"$py\" tools/verify_manual_visual.py --manual MANUAL.html && mise run manual-figures-check'"
 
 [tasks.verify-pr]
 description = "Run all blocking quality profiles before a pull request."
